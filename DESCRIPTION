@@ -1,12 +1,13 @@
 Package: opadar
 Type: Package
-Title: Funciones útiles para el día a día de la OPADA, UPCT.
+Title: Useful functions for the daily operations of the  OPADA, UPCT.
 Version: 0.1.0
 Date: 2015-09-08
 Authors@R: person("Mathieu", "Kessler", email = "mathieu.kessler@upct.es",
   role = c("aut", "cre"))
-Description: La OPADA en la UPCT usa R de manera intensiva y diaria.
-  Este paquete contiene funciones útiles que los miembros de la OPADA han ido
-  elaborando a medida que las han requerido.
+Description: The OPADA (Office for Prospection and Data Analysis in spanish) of the Universidad Politecnica de Cartagena
+  (UPCT)
+  uses R intensively on a daily basis.
+  This package collects useful funtions and codifications datasets which the members of OPADA have progressively developed as required.
 LazyData: TRUE
 Imports: dplyr
