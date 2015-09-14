@@ -179,10 +179,11 @@ info_join <- function(x, y, ...){
     cat(paste0(" Rows in y with more than one match in x:  ", MoreMapstoOne,
                " (total)\t", UniqueMoreMapstoOne, " (unique),\n"))
     cat("--------------------------------------------------------------------------------\n")
-    cat("left_:", nrow(xcyc %>% filter(!is.na(id.i_j.x))), "x", ncol(xcyc), "\t")
-    cat("inner_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), !is.na(id.i_j.y))), "x", ncol(xcyc), "\t")
-    cat("full_:", nrow(xcyc), "x", ncol(xcyc), "\n")
+    cat("left_:", nrow(xcyc %>% filter(!is.na(id.i_j.x))), "x", ncol(xcyc) - 8, "\t")
+    cat("inner_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), !is.na(id.i_j.y))),
+        "x", ncol(xcyc) - 8, "\t")
+    cat("full_:", nrow(xcyc), "x", ncol(xcyc) - 8, "\n")
     cat("anti_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), is.na(id.i_j.y))), "x", ncol(x), "\t")
     cat("semi_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), !is.na(id.i_j.y))), "x", ncol(x), "\t")
-    cat("right_:", nrow(xcyc %>% filter(!is.na(id.i_j.y))), "x", ncol(xcyc), "\n")
+    cat("right_:", nrow(xcyc %>% filter(!is.na(id.i_j.y))), "x", ncol(xcyc) -8, "\n")
 }
