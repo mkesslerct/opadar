@@ -187,3 +187,111 @@ info_join <- function(x, y, ...){
     cat("semi_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), !is.na(id.i_j.y))), "x", ncol(x), "\t")
     cat("right_:", nrow(xcyc %>% filter(!is.na(id.i_j.y))), "x", ncol(xcyc) -8, "\n")
 }
+
+#' Performs a diff between two dataframes
+#'
+#' For two dataframes \code{df1} and \code{df2} with a unique identifier
+#' (\code{key}) and the same columns, performs a
+#' diff: it returns (invisibly) a dataframe with the rows in both dataframes which
+#' present some differences, and optionally, write a xlsx file (using the
+#' \code{openxlsx} package) with the three sheets. The first sheet contains the rows
+#' with highlighted  differences, the second sheet contains the rows of
+#' \code{df1} that have no match in \code{df2}, while the third sheet contains
+#' the rows of \code{df2} with no match in \code{df1}.
+#'
+#' @param df1, df2 dataframes. They should have the same columns, even if they
+#' appear in a different order (\code{rbind(df1, df2)} should make sense)
+#' @param key String vector. A vector of columns names which serve as a unique identifier.
+#' @param file String. The name of an xlsx file where the differences between
+#' \code{df1} and \code{df2} are written.
+#' @return To access the dataframe that contains the differences, the output of
+#' \code{diffdataframe} should be assigned to a variable.
+#' @examples
+#' library("dplyr")
+#' ## consider two dataframes
+#' df1 <- data_frame(x = paste("id", c(1, 1, 2)),
+#'                   year = c("2001", "2002", "2002"),
+#'                   y = letters[1:3])
+#' df2 <- data_frame(x = paste("id", 1:2),
+#'                   year = rep("2002", 2),
+#'                   y = c("a", "c"))
+#' ## writes to a xlsx file but does not produce a dataframe:
+#'  diffdataframe(df1, df2, key = c("x", "year"), file = "diff-df1-vs-df2.xlsx")
+#' ## write the resulting dataframe to an object for further use:
+#' diff_df1_df2 <- diffdataframe(df1, df2, key = c("x", "year"))
+#'
+#' @importFrom dplyr '%>%'
+#' @export
+diffdataframe <- function(df1, df2, key, file = NULL)
+{
+  if (length(dplyr::union(dplyr::setdiff(names(df1), names(df2)),
+                  dplyr::setdiff(names(df2), names(df1)))) > 0)
+  {
+    stop("names of df1 and df2 present differences")
+  }
+  if (sum(duplicated(df1[key])) > 0)
+  {
+    stop("key is not a unique key of df1")
+  } else
+    {
+      if (sum(duplicated(df2[key])) > 0)
+      {
+        stop("key is not a unique key of df2")
+      }
+    }
+  hacambiado <- function(x)
+  {
+      rep(!duplicated(x)[2], 2)
+  }
+  df1$origen <- "1"
+  df2$origen <- "2"
+  df12 <- rbind(df1, df2)
+  arrg_cols <- c(key, "origen")
+  grp_cols <- key
+  # Convert character vector to list of symbols
+  dotsarrg <- lapply(arrg_cols, as.symbol)
+  dotsgrp <- lapply(grp_cols, as.symbol)
+  cambios <- df12 %>%
+    dplyr::arrange_(.dots = dotsarrg) %>%
+    dplyr::select(-origen) %>%
+    dplyr::distinct() %>%
+    dplyr::group_by_(.dots = dotsgrp) %>%
+    dplyr::mutate(n = n())  %>%
+    dplyr::filter(n > 1)
+
+  ## ---------------------------------------------------------------------------
+  ## --    Write to xlsx file
+  ## ---------------------------------------------------------------------------
+  if (!is.null(file)){
+      colores <- cambios  %>%
+        dplyr::mutate_each(funs(hacambiado(.)))
+      wb <- openxlsx::createWorkbook()
+      options("openxlsx.borderColour" = "#4F80BD")
+      options("openxlsx.borderStyle" = "thin")
+      openxlsx::modifyBaseFont(wb, fontSize = 10, fontName = "Arial Narrow")
+      openxlsx::addWorksheet(wb, sheetName = "Diff results")
+      openxlsx::addWorksheet(wb, sheetName = "Rows that disappear from df1")
+      openxlsx::addWorksheet(wb, sheetName = "Rows that appear in df2")
+      openxlsx::writeData(wb, "Diff results", cambios %>% select(-n))
+      prevStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
+                                         bgFill = "#FFC7CE")
+      actuStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
+                                         bgFill = "red")
+      for (j in 1:(ncol(cambios) - 1)){
+          openxlsx::addStyle(wb, 1, style = prevStyle, rows = 1 + which(colores[,j] == TRUE),
+                   cols = rep(j, sum(colores[,j] == TRUE)))
+          openxlsx::addStyle(wb, 1, style = actuStyle, rows = 1 + which(colores[,j] == TRUE),
+                   cols = rep(j, sum(colores[,j] == TRUE)))
+      }
+      df1notin2 <- df1 %>%
+        dplyr::anti_join(df2, by = key) %>%
+        dplyr::mutate(origen = NULL)
+      openxlsx::writeData(wb, 2, df1notin2)
+      df2notin1 <- df2 %>%
+        dplyr::anti_join(df1, by = key) %>%
+        dplyr::mutate(origen = NULL)
+      openxlsx::writeData(wb, 3, df2notin1)
+      openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+  }
+  invisible(cambios)
+}
