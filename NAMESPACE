@@ -3,4 +3,5 @@
 export(datafile)
 export(diffdataframe)
 export(info_join)
+export(letraNIFE)
 importFrom(dplyr,'%>%')

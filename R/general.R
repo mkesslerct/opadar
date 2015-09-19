@@ -295,3 +295,48 @@ diffdataframe <- function(df1, df2, key, file = NULL)
   }
   invisible(cambios)
 }
+#' Returns the final letter of a DNI or NIE 8 characters string.
+#'
+#' The function implements the algorithm described in
+#' \url{http://www.interior.gob.es/web/servicios-al-ciudadano/dni/calculo-del-digito-de-control-del-nif-nie}
+#' to derive the final letter of a 8 characters. The first character in the
+#' string may be either a number or "X", "Y" or "Z". The remaining 7 characters
+#' must be digits. If \code{dni} does not match this format, the function
+#' returns \code{NA}.
+#'
+#' @param dni String vector.
+#' @return the final letter of the DNI / NIE. The function is vectorized, so
+#' that it admits a vector of strings and returns a vector. If \code{dni} does
+#' not match the right format for a DNI or NIE, it returns \code{NA}.
+#' @examples
+#' letraNIFE(c("12345678", "1234", "A1234567", "Y1234567", "X1234567"))
+#'
+#' @importFrom dplyr '%>%'
+#' @export
+## Cálculo letra NIF NIE
+## Algoritmo explicado en
+## http://www.interior.gob.es/web/servicios-al-ciudadano/dni/calculo-del-digito-de-control-del-nif-nie
+letraNIFE <-function(dni){
+    ## Controlamos que el formato de DNI o NIE es correcto
+    formatovalido <-  grepl("[XYZ0-9][0-9]{7}", dni)
+    tipo <-
+        ifelse(formatovalido,
+               ifelse(grepl((d1 <- substr(dni, 1, 1)),
+                                     pattern = "[0-9]"),
+                      "DNI",
+                      "NIE"),
+               "ERROR")
+    vletra <- 0:2
+    names(vletra) = c("X", "Y", "Z")
+    letra <- rep(NA, length(dni))
+    letra[tipo == "DNI"] <-
+        letrasfinales$LETRA[1 + as.numeric(dni[tipo == "DNI"])%% 23]
+    letra[tipo == "NIE"] <-
+        letrasfinales$LETRA[1 +
+                              as.numeric(paste(
+                                  vletra[d1[tipo == "NIE"]],
+                                  substr(dni[tipo == "NIE"], 2, 8),
+                                  sep =""))
+              %% 23]
+    letra
+}
