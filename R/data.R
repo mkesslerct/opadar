@@ -100,3 +100,27 @@
 #' dplyr::filter(siiu_codigos_ambito_estudio, substr(ID, 3, 3) == "0") %>%
 #' dplyr::mutate(ID2 = substr(ID, 1, 2))
 "siiu_codigos_ambito_estudio"
+
+#' Códigos SIIU de las categorías de PDI.
+#'
+#' Códigos SIIU de las categorías de PDI. Se usa en los ficheros U064xxRH0101
+#' (pdi centros propios), U064xxRH0104 (pdi centros privados, i.e Turismo) y U064xxRH0105
+#' (pdi centros privados sin ánimo de lucro, i.e CUD).
+#' Última modificación según portal SIIU: 01/12/2010.
+#'
+#' @docType data
+#'
+#' @usage data(siiu_codigos_categoria_pdi)
+#'
+#' @keywords datasets
+#'
+#' @source Apartado "Descargas" en SIIU.
+#' @format Un dataframe con 57 filas y 3 columnas
+#' \itemize{
+#'  \item ID. El código usado en los ficheros SIIU.
+#'  \item NOMBRE
+#' \item TipoCentro String. El tipo de centro en el que presta su servicio el
+#' PDI. Admite tres valores "Centros propios" (todos nuestros centros propios),
+#' "Centros privados" (Turismo) y "Centros privados sin ánimo de lucro" (el CUD)'
+#' }
+"siiu_codigos_categoria_pdi"

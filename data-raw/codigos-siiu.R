@@ -20,3 +20,23 @@ siiu_codigos_ambito_estudio <-
                sheet = "Ambito_Estudio")
 names(siiu_codigos_ambito_estudio) <-
     gsub(" ", "", names(siiu_codigos_ambito_estudio))
+siiu_codigos_categoria_pdi <-
+    read_excel(opadar::datafile("siiu_Codigos_86047.xls"),
+               sheet = 1)
+siiu_codigos_categoria_pdi <-
+    siiu_codigos_categoria_pdi %>%
+      mutate(TipoCentro = "Centros propios")
+siiu_codigos_categoria_pdi <-
+    siiu_codigos_categoria_pdi %>% 
+      rbind(
+          read_excel(opadar::datafile("siiu_Codigos_86047.xls"),
+                     sheet = 2) %>%
+            mutate(TipoCentro = "Centros privados"))
+siiu_codigos_categoria_pdi <-
+    siiu_codigos_categoria_pdi %>% 
+      rbind(
+          read_excel(opadar::datafile("siiu_Codigos_86047.xls"),
+                     sheet = 3) %>%
+            mutate(TipoCentro = "Centros privados sin ánimo de lucro"))
+
+devtools::use_data(siiu_codigos_categoria_pdi)
