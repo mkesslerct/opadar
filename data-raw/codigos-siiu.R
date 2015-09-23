@@ -1,6 +1,9 @@
 library("readxl")
 library("dplyr")
-datapath <- c("~/OPADA/paquetesr/opadar/data-raw/data/")
+library("XML")
+library("opadar")
+datapath <- c("~/OPADA/paquetesr/opadar/data-raw/data/",
+              "~/OPADA/data/SIIU/")
 siiu_codigos_erasmus <-
     read_excel(opadar::datafile("siiu_Codigos_70609.xls"),
                sheet = "Códigos_ERASMUS")
@@ -38,5 +41,19 @@ siiu_codigos_categoria_pdi <-
           read_excel(opadar::datafile("siiu_Codigos_86047.xls"),
                      sheet = 3) %>%
             mutate(TipoCentro = "Centros privados sin ánimo de lucro"))
+## los códigos de los centros UPCT
+centrosUPCT <- xmlToDataFrame(datafile("U06414AX0101_02.XML")) %>%
+  rename(NombreCentro = NombreUnidad,
+         CodigoSIIU = Unidad) %>%
+  select(NombreCentro, CodigoSIIU) %>%
+  mutate(Acronimo = c("CUD",
+             "FCE",
+             "ETSII",
+             "ETSIA",
+             "EICM",
+             "ETSINO",
+             "EUT",
+             "ETSIT",
+             "ARQEDI"))
 
-devtools::use_data(siiu_codigos_categoria_pdi)
+devtools::use_data(centrosUPCT)

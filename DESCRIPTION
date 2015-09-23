@@ -1,8 +1,8 @@
 Package: opadar
 Type: Package
 Title: Useful functions for the daily operations of the  OPADA, UPCT.
-Version: 0.1.1
-Date: 2015-09-19
+Version: 0.1.2
+Date: 2015-09-23
 Authors@R: person("Mathieu", "Kessler", email = "mathieu.kessler@upct.es",
   role = c("aut", "cre"))
 Description: The OPADA (Office for Prospection and Data Analysis in spanish) of the Universidad Politecnica de Cartagena
