@@ -103,7 +103,6 @@ info_join <- function(x, y, ...){
     yt <- y
     names(xt) <- paste("V", 1:ncol(x), sep = "")
     names(yt) <- paste("V", 1:ncol(y), sep = "")
-    ## no funciona este cambio de names porque impide usar el argumento by en ...
     grp_cols <- names(xt)
     # Convert character vector to list of symbols
     dots <- lapply(grp_cols, as.symbol)
@@ -131,7 +130,7 @@ info_join <- function(x, y, ...){
                             dplyr::filter(is.na(id.i_j.y)))
     dfjoinx <- xcyc %>%
       dplyr::filter(!is.na(id.i_j.x)) %>%
-      dplyr::group_by(id.i_j.x) %>%
+      dplyr::group_by(id.i_j.x, position.i_j.x) %>%
       dplyr::mutate(matchy = sum(!is.na(id.i_j.y)))
     OneMapstoOne <- length(unique((dfjoinx %>%
                                      dplyr::filter(matchy == 1))$fila.i_j.x))
@@ -145,7 +144,7 @@ info_join <- function(x, y, ...){
                             dplyr::filter(is.na(id.i_j.x)))
     dfjoiny <- xcyc %>%
       dplyr::filter(!is.na(id.i_j.y)) %>%
-      dplyr::group_by(id.i_j.y) %>%
+      dplyr::group_by(id.i_j.y, position.i_j.y) %>%
       dplyr::mutate(matchx = sum(!is.na(id.i_j.x)))
     OneMapstoOney <- length(unique((dfjoiny %>%
                                      dplyr::filter(matchx == 1))$fila.i_j.y))
@@ -179,13 +178,13 @@ info_join <- function(x, y, ...){
     cat(paste0(" Rows in y with more than one match in x:  ", MoreMapstoOne,
                " (total)\t", UniqueMoreMapstoOne, " (unique),\n"))
     cat("--------------------------------------------------------------------------------\n")
-    cat("left_:", nrow(xcyc %>% filter(!is.na(id.i_j.x))), "x", ncol(xcyc) - 8, "\t")
-    cat("inner_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), !is.na(id.i_j.y))),
+    cat("left_:", nrow(xcyc %>% dplyr::filter(!is.na(id.i_j.x))), "x", ncol(xcyc) - 8, "\t")
+    cat("inner_:", nrow(xcyc %>% dplyr::filter(!is.na(id.i_j.x), !is.na(id.i_j.y))),
         "x", ncol(xcyc) - 8, "\t")
     cat("full_:", nrow(xcyc), "x", ncol(xcyc) - 8, "\n")
-    cat("anti_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), is.na(id.i_j.y))), "x", ncol(x), "\t")
-    cat("semi_:", nrow(xcyc %>% filter(!is.na(id.i_j.x), !is.na(id.i_j.y))), "x", ncol(x), "\t")
-    cat("right_:", nrow(xcyc %>% filter(!is.na(id.i_j.y))), "x", ncol(xcyc) -8, "\n")
+    cat("anti_:", nrow(xcyc %>% dplyr::filter(!is.na(id.i_j.x), is.na(id.i_j.y))), "x", ncol(x), "\t")
+    cat("semi_:", nrow(xcyc %>% dplyr::filter(!is.na(id.i_j.x), !is.na(id.i_j.y))), "x", ncol(x), "\t")
+    cat("right_:", nrow(xcyc %>% dplyr::filter(!is.na(id.i_j.y))), "x", ncol(xcyc) -8, "\n")
 }
 
 #' Performs a diff between two dataframes
@@ -340,3 +339,139 @@ letraNIFE <-function(dni){
               %% 23]
     letra
 }
+
+getcellrowcolumn <- function(cells)
+{
+    ## Utility function that transforms a (vector of) Excel reference into a
+    ## dataframe with asociated column and row numbers.
+    cells <- toupper(cells)
+    ## check if cells have correct formatting
+    u <- regexpr("[A-Z]+[1-9][0-9]*", cells)
+    if (!identical(attr(u, "match.length"), stringr::str_length(cells)))
+    {
+        stop("Incorrect cell specification")
+    }
+
+    columns <- stringr::str_extract(cells, "[A-Z]+")
+    rows <- stringr::str_extract(cells, "[1-9][0-9]*")
+    columnschar <- stringr::str_extract_all(columns, ".")
+    letters2number <- function(columns)
+    {
+        sum(stringr::str_locate(paste(LETTERS, collapse = ""), columns)[,1] *
+              c(rep(26, length(columns)-1), 1))
+    }
+    colnumbers <- sapply(columnschar,FUN = letters2number)
+    data.frame(column = colnumbers, row = as.integer(rows))
+}
+
+escribirTablaDatos <- function(wbfile, sheetName, x, titulo = "",
+                               titleStyle = NULL, headerStyle = NULL,
+                               areaTitulo = "A1:A3",
+                               upperleftcell = NULL,
+                               overwrite = FALSE,
+                               overwriteSheet = FALSE,
+                               ...)
+{
+    if (is.character(wbfile))
+    {
+        if (file.exists(wbfile))
+        {
+            if (overwrite)
+                ## if the file exists, overwrite must be TRUE
+            {
+                wb <- openxlsx::loadWorkbook(wbfile)
+            } else
+            {
+                stop(paste("overwrite is FALSE, and file ", wbfile,
+                           "already exists"))
+            }
+        } else
+        {
+            wb <- createWorkbook()
+        }
+    } else
+        ## in case it is not a string, it is a workbook
+    {
+        wb <- wbfile
+    }
+    ## -------------------------------------------------------------------------
+    ##
+    ## Comprobamos si existe ya sheetName, y en caso contrario creamos la hoja
+    ##
+    ## -------------------------------------------------------------------------
+    if (length(grep(sheetName, names(wb))) == 0)
+    {
+        openxlsx::addWorksheet(wb, sheetName = sheetName)
+    } else
+    {
+        if (!overwriteSheet)
+        {
+            stop("overwriteSheet is FALSE, but ",sheetName," already exists")
+        }
+    }
+    ## -------------------------------------------------------------------------
+    ##
+    ## Escribimos el titulo
+    ##
+    ## -------------------------------------------------------------------------
+    u <- regexpr("[A-Z]+[1-9][0-9]*:[A-Z]+[1-9][0-9]*", areaTitulo)
+    if (!identical(attr(u, "match.length"), stringr::str_length(areaTitulo)))
+    {
+        stop("Incorrect  specification for areaTitulo, it should be of the form \"A1:B5\" ")
+    }
+    areaTitulo <-
+        unlist(stringr::str_extract_all(areaTitulo, "[A-Z]+[1-9][0-9]*"))
+    titulocolumnrow <- getcellrowcolumn(areaTitulo)
+    openxlsx::writeData(wb, sheet = sheetName, x = titulo,
+                        colNames = FALSE, rowNames = FALSE,
+                        startRow = titulocolumnrow$row[1],
+                        startCol = titulocolumnrow$col[1])
+    ## estilo del título
+    if (is.null(titleStyle))
+    {
+        titleStyle <- createStyle(fontSize = 12,
+                                  textDecoration = c("bold", "italic"),
+                                  valign = "center",
+                                  halign = "center")
+    }
+    addStyle(wb, sheetName,
+             style = titleStyle, rows = titulocolumnrow$row[1],
+             cols = titulocolumnrow$col[1])
+    ## combinamos las celdas del título
+    mergeCells(wb, sheetName,
+               cols = titulocolumnrow$column,
+               rows = titulocolumnrow$row)
+    ## -------------------------------------------------------------------------
+    ##
+    ## Escribimos el dataframe
+    ##
+    ## -------------------------------------------------------------------------
+    if (is.null(upperleftcell))
+    {
+        ulcell <- data.frame(column = min(titulocolumnrow$column),
+                             row = max(titulocolumnrow$row) + 2)
+    } else
+    {
+        ulcell <- getcellrowcolumn(upperleftcell)
+    }
+    writeDataTable(wb, sheet = sheetName, x = x,
+                   colNames = TRUE, rowNames = FALSE,
+                   headerStyle = headerStyle ,
+                   startCol = ulcell$column,
+                   startRow = ulcell$row,
+                   ...)
+    setColWidths(wb, sheet = sheetName,
+                 cols = ulcell$column:(ulcell$column + ncol(x) - 1),
+                 widths = "auto", ignoreMergedCells = TRUE)
+    ## -------------------------------------------------------------------------
+    ##
+    ## Guardamos en un fichero si wbf es un fichero.
+    ##
+    ## -------------------------------------------------------------------------
+    if (is.character(wbfile))
+    {
+        saveWorkbook(wb, wbfile, overwrite)
+    }
+    invisible(wb)
+}
+
