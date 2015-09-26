@@ -221,8 +221,7 @@ info_join <- function(x, y, ...){
 #'
 #' @importFrom dplyr '%>%'
 #' @export
-diffdataframe <- function(df1, df2, key, file = NULL)
-{
+diffdataframe <- function(df1, df2, key, file = NULL){
   if (length(dplyr::union(dplyr::setdiff(names(df1), names(df2)),
                   dplyr::setdiff(names(df2), names(df1)))) > 0)
   {
@@ -339,139 +338,191 @@ letraNIFE <-function(dni){
               %% 23]
     letra
 }
-
-getcellrowcolumn <- function(cells)
-{
-    ## Utility function that transforms a (vector of) Excel reference into a
-    ## dataframe with asociated column and row numbers.
-    cells <- toupper(cells)
-    ## check if cells have correct formatting
-    u <- regexpr("[A-Z]+[1-9][0-9]*", cells)
-    if (!identical(attr(u, "match.length"), stringr::str_length(cells)))
-    {
-        stop("Incorrect cell specification")
-    }
-
-    columns <- stringr::str_extract(cells, "[A-Z]+")
-    rows <- stringr::str_extract(cells, "[1-9][0-9]*")
-    columnschar <- stringr::str_extract_all(columns, ".")
-    letters2number <- function(columns)
-    {
-        sum(stringr::str_locate(paste(LETTERS, collapse = ""), columns)[,1] *
-              c(rep(26, length(columns)-1), 1))
-    }
-    colnumbers <- sapply(columnschar,FUN = letters2number)
-    data.frame(column = colnumbers, row = as.integer(rows))
-}
-
-escribirTablaDatos <- function(wbfile, sheetName, x, titulo = "",
+#' Una función para escribir un dataframe a un fichero Excel.
+#'
+#' Combina diferentes funciones de \code{openxlsx} para, dado  un workbook, crear
+#' una hoja, escribir un título, escribir un dataframe en el workbook en un
+#' único paso. Permite también la combinación (merge) de celdas verticales
+#' consecutivas que contienen el mismo valor, para mejorar la presentación de
+#' tablas.
+#' Combina bien con  el "pipe operator" de \code{magrittr}, tal como
+#' queda ilustrado en la vignette.
+#'
+#' @param wb El workbook que será modificado.
+#' @param sheetName String. El nombre de la hoja donde se debe escribir el
+#' dataframe \code{x}. Si no existe en el workbook, será creada.
+#' @param x dataframe. El dataframe que se escribirá en el workbook.
+#' @param titulo String. El texto que se coloca encima del dataframe en el
+#' workbook. Si no se desea ningún título, es suficiente con no especificarlo,
+#' el defecto de este argumento siendo \code{NULL}.
+#' @param titleStyle El estilo que se desea usar para \code{titulo}. Debe haber
+#' sido creado con \code{openxlsx::createStyle}. Si no se especifica, se usa un
+#' estilo con \code{fontsize = 12}, \code{textDecoration = c("bold", "italic")},
+#' \code{valign = "center"} y \code{halign = "center"}.
+#' @param headerStyle El estilo que se desea usar para la cabecera del dataframe
+#' \code{x}. Debe haber sido creado con \code{openxlsx::createStyle}. Si no se
+#' especifica, se usa un estilo con color de fuente blanco y fondo azul, además
+#' de \code{textDecoration = "Bold"}, \code{valign = "center"} y \code{halign =
+#' "center"}.
+#' @param areaTitulo String. La especificación formato Excel del área
+#' rectangular que debe ocupar el título en la hoja. Se combinarán todas las
+#' celdas del área. Por defecto es "A1:C1", es decir las tres primeras celdas de
+#' la primera fila.
+#' @param upperleftCell String. La especificación formato Excel de la celda
+#' superior izquierda del área donde se escribirá el dataframe \code{x}. Por
+#' defecto, es dos filas más abajo que la esquina izquierda inferior del título.
+#' @param spanColumns String. Permite combinar celdas verticales consecutivas si
+#' contienen el mismo valor, para mejorar el aspecto de tablas por ejemplo. Es
+#' un vector construido a partir de los nombres de columnas de \code{x} en las
+#' que hay que combinar celdas verticales consecutivas iguales. Si \code{x} es
+#' un dataframe con columnas \code{profesor},\code{sexo}, \code{asignatura}, por
+#' ejemplo, si \code{spanColumn = c("profesor;sexo", "asignatura")}, quiere
+#' decir que \code{profesor} y \code{sexo} tienen la misma estructura de
+#' combinación, determinada por \code{profesor} (\code{sexo} "hereda" de las
+#' combinaciones verticales determinadas por \code{profesor}. \code{asignatura}
+#' tiene su propio estructura de combinación vertical, pero está supedita a las
+#' combinaciones de \code{profesor}. Ver la vignette para más explicaciones y
+#' ejemplos.
+#' @return Un workbook que es invisible. 
+#' @examples
+#' library("magrittr")
+#' library("openxlsx")
+#' opada <- data.frame(Nombre = c("Álvaro", "Antonio", "Mari Carmen",
+#'                                "Mathieu"),
+#'                    Sexo = c("Hombre", "Hombre", "Mujer", "Hombre"),
+#'                      Edad = c(25, 25, 23, 25),
+#'                      Nacionalidad = c("720", "720", "720", "250")) 
+#'
+#'## Escribimos en un fichero
+#' \dontrun
+#' {
+#' createWorkbook() %>%
+#'      escribirTablaDatos(createWorkbook(),
+#'                         sheetName = "La OPADA",
+#'                         x = opada,
+#'                         titulo = "Miembros de la OPADA",
+#'                         areaTitulo = "A2:D2",
+#'                         withFilter = FALSE) %>%
+#'      saveWorkbook("tmp/rr.xlsx", overwrite = TRUE)
+#' }
+#' ## Para más ejemplos, ver la vignette
+#' @importFrom dplyr '%>%'
+#' @export
+escribirTablaDatos <- function(wb,
+                               sheetName,
+                               x,
+                               titulo = NULL,
                                titleStyle = NULL, headerStyle = NULL,
-                               areaTitulo = "A1:A3",
-                               upperleftcell = NULL,
-                               overwrite = FALSE,
-                               overwriteSheet = FALSE,
-                               ...)
-{
-    if (is.character(wbfile))
-    {
-        if (file.exists(wbfile))
-        {
-            if (overwrite)
-                ## if the file exists, overwrite must be TRUE
-            {
-                wb <- openxlsx::loadWorkbook(wbfile)
-            } else
-            {
-                stop(paste("overwrite is FALSE, and file ", wbfile,
-                           "already exists"))
-            }
-        } else
-        {
-            wb <- createWorkbook()
-        }
-    } else
-        ## in case it is not a string, it is a workbook
-    {
-        wb <- wbfile
-    }
+                               areaTitulo = "A1:C1",
+                               upperleftCell = NULL,
+                               spanColumns = NULL,
+                               ...){
     ## -------------------------------------------------------------------------
     ##
     ## Comprobamos si existe ya sheetName, y en caso contrario creamos la hoja
     ##
     ## -------------------------------------------------------------------------
-    if (length(grep(sheetName, names(wb))) == 0)
-    {
+    if (length(grep(sheetName, names(wb))) == 0){
         openxlsx::addWorksheet(wb, sheetName = sheetName)
-    } else
-    {
-        if (!overwriteSheet)
-        {
-            stop("overwriteSheet is FALSE, but ",sheetName," already exists")
-        }
     }
     ## -------------------------------------------------------------------------
     ##
     ## Escribimos el titulo
     ##
     ## -------------------------------------------------------------------------
-    u <- regexpr("[A-Z]+[1-9][0-9]*:[A-Z]+[1-9][0-9]*", areaTitulo)
-    if (!identical(attr(u, "match.length"), stringr::str_length(areaTitulo)))
-    {
-        stop("Incorrect  specification for areaTitulo, it should be of the form \"A1:B5\" ")
+    if (!is.null(titulo)){
+        u <- regexpr("[A-Z]+[1-9][0-9]*:[A-Z]+[1-9][0-9]*", areaTitulo)
+        if (!identical(attr(u, "match.length"),
+                       stringr::str_length(areaTitulo))){
+            stop("Incorrect  specification for areaTitulo, it should be of the form \"A1:B5\" ")
     }
-    areaTitulo <-
-        unlist(stringr::str_extract_all(areaTitulo, "[A-Z]+[1-9][0-9]*"))
-    titulocolumnrow <- getcellrowcolumn(areaTitulo)
-    openxlsx::writeData(wb, sheet = sheetName, x = titulo,
-                        colNames = FALSE, rowNames = FALSE,
-                        startRow = titulocolumnrow$row[1],
-                        startCol = titulocolumnrow$col[1])
-    ## estilo del título
-    if (is.null(titleStyle))
-    {
-        titleStyle <- createStyle(fontSize = 12,
-                                  textDecoration = c("bold", "italic"),
-                                  valign = "center",
-                                  halign = "center")
+        areaTitulo <-
+            unlist(stringr::str_extract_all(areaTitulo, "[A-Z]+[1-9][0-9]*"))
+        titulocolumnrow <- getcellrowcolumn(areaTitulo)
+        openxlsx::writeData(wb, sheet = sheetName, x = titulo,
+                            colNames = FALSE, rowNames = FALSE,
+                            startRow = titulocolumnrow$row[1],
+                            startCol = titulocolumnrow$col[1])
+        ## estilo del título
+        if (is.null(titleStyle)) {
+            titleStyle <- openxlsx::createStyle(fontSize = 12,
+                                      textDecoration = c("bold", "italic"),
+                                      valign = "center",
+                                      halign = "center")
+        }
+        openxlsx::addStyle(wb, sheetName,
+                 style = titleStyle, rows = titulocolumnrow$row[1],
+                 cols = titulocolumnrow$col[1])
+        ## combinamos las celdas del título
+        openxlsx::mergeCells(wb, sheetName,
+                   cols = titulocolumnrow$column,
+                   rows = titulocolumnrow$row)
+    } else {
+        ## si titulo es NULL, imponenemos que areaTitulo corresponda al valor
+        ## por defecto
+        titulocolumnrow <- getcellrowcolumn("A1:C1")
     }
-    addStyle(wb, sheetName,
-             style = titleStyle, rows = titulocolumnrow$row[1],
-             cols = titulocolumnrow$col[1])
-    ## combinamos las celdas del título
-    mergeCells(wb, sheetName,
-               cols = titulocolumnrow$column,
-               rows = titulocolumnrow$row)
     ## -------------------------------------------------------------------------
     ##
     ## Escribimos el dataframe
     ##
     ## -------------------------------------------------------------------------
-    if (is.null(upperleftcell))
+    if (is.null(upperleftCell))
     {
         ulcell <- data.frame(column = min(titulocolumnrow$column),
                              row = max(titulocolumnrow$row) + 2)
     } else
     {
-        ulcell <- getcellrowcolumn(upperleftcell)
+        ulcell <- getcellrowcolumn(upperleftCell)
     }
-    writeDataTable(wb, sheet = sheetName, x = x,
+    ## -------------------------------------------------------------------------
+    ##     Estilo del header del dataframe
+    ## -------------------------------------------------------------------------
+    if (is.null(headerStyle))
+    {
+     headerStyle <- openxlsx::createStyle(fontColour = "#ffffff", fgFill = "#4F80BD",
+                   halign = "center", valign = "center", textDecoration = "Bold",
+                   border = "TopBottomLeftRight")
+    }
+    openxlsx::addStyle(wb, sheetName,
+             style = headerStyle,
+             rows = rep(ulcell$row[1], ncol(x)),
+             cols = ulcell$col[1] + 0:(ncol(x) -1))
+    ## -------------------------------------------------------------------------
+    ##
+    ## Combinamos celdas verticales que corresponden a valores consecutivos
+    ## iguales
+    ##
+    ## -------------------------------------------------------------------------
+    if (!is.null(spanColumns)){
+        ## obtenemos una lista con las posiciones de las columnas de spanColumns
+        f <- function(nombrescolumnas){
+            sapply(nombrescolumnas,
+                   FUN = function(v){
+                       if (sum(tt <- ! v %in% colnames(x))>0) {
+                           stop("Especificación incorrecta de spanColumns: ",
+                                v[tt], " no es(son) columna(s) del dataframe")
+                       }
+                       which((colnames(x) %in% v))
+               })
+        }
+        columnas <- lapply(strsplit(spanColumns, ";"), FUN = f)
+        ## aplicamos el mergeCellsTabla de utility-functions.R a los distintos
+        ## vectores componentes de la lista columnas.
+        mergeCellsTabla(wb, sheetName = sheetName,
+                        df = x,
+                        columnas = columnas,
+                        startRow = ulcell$row[1],
+                        startCol = ulcell$column[1])
+    }
+    openxlsx::writeDataTable(wb, sheet = sheetName, x = x,
                    colNames = TRUE, rowNames = FALSE,
                    headerStyle = headerStyle ,
                    startCol = ulcell$column,
                    startRow = ulcell$row,
                    ...)
-    setColWidths(wb, sheet = sheetName,
+    openxlsx::setColWidths(wb, sheet = sheetName,
                  cols = ulcell$column:(ulcell$column + ncol(x) - 1),
                  widths = "auto", ignoreMergedCells = TRUE)
-    ## -------------------------------------------------------------------------
-    ##
-    ## Guardamos en un fichero si wbf es un fichero.
-    ##
-    ## -------------------------------------------------------------------------
-    if (is.character(wbfile))
-    {
-        saveWorkbook(wb, wbfile, overwrite)
-    }
     invisible(wb)
 }
-

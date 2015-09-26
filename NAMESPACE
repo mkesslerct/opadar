@@ -2,6 +2,7 @@
 
 export(datafile)
 export(diffdataframe)
+export(escribirTablaDatos)
 export(info_join)
 export(letraNIFE)
 importFrom(dplyr,'%>%')

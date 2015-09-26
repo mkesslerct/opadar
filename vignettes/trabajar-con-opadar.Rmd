@@ -1,0 +1,106 @@
+---
+title: "Trabajar con opadar"
+author: "Mathieu Kessler"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Trabajar con opadar}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+El trabajo diario en la [OPADA](http:://www.upct.es/opada), Universidad Politécnica de Cartagena, usa de manera intensiva R, el paquete `opadar` recopila distintas funciones útiles para manipular dataframes y producir ficheros Excel entregados a sus usuarios.
+
+## A la hora de combinar dataframes con los verbos `..._join` de `dplyr` 
+
+Una de las operaciones más comunes en la OPADA es combinar la información procedentes de distintas tablas: si queremos obtener un desglose de los créditos matriculados en función del grado y el sexo de los alumnos, necesitaremos combinar la información contenida en una tabla sobre créditos, donde cada individuo estará identificado por su plan y su número de expediente, con la información sobre matrículas en cada plan que asocia plan y expediente con el DNI del estudiante, y finalmente información sobre el alumno en sí (Sexo, etc..). 
+
+Para combinar la información recogida en distintos dataframes, generados en general a partir de select en SQL, usamos con mucha regularidad los verbos `inner_join`, `full_join`, `anti_join`,  `semi_join` y `right_join` de la librería `dplyr`. Para más información sobre estos verbos, se recomienda ver la vignette ["Two-table verbs"](https://cran.r-project.org/web/packages/dplyr/vignettes/two-table.html). 
+
+Una de las fuentes más frecuentes de error, al combinar dos dataframes `x` y `y` con alguno de los verbos `..._join` se debe a que sin darnos cuenta, alguna fila en ` x` tiene más de una coincidencia en el dataframe `y` por lo que esta fila da origen a dos filas en el dataframe combinado. Esta duplicidad puede dar lugar a un recuento erróneo, al contar dos veces el mismo individuo por ejemplo.
+También es posible que, alguna fila de `x` no tenga ninguna coincidencia en `y`. Según el verbo que usemos, esta fila podrá desaparecer o no en el dataframe combinado.
+
+```{r}
+(alumnos <- data.frame(plan = c("5051", rep("5041", 3)),
+                      expediente = c(10, 1, 1, 2),
+                      sexo = c("Hombre", "Mujer", "Mujer", "Hombre")))
+(creditos  <- data.frame(anyo = c("2013-14",
+                                 "2013-14",
+                                 "2014-15"),
+                        plan = rep("5041", 3),
+                        expediente = c(1, 2, 2),
+                        creditos = c(60, 60, 54)))
+```
+
+
+Antes de hacer un `..._join`, es imprescindible ser conscientes de las coincidencias de filas entre `x` e  `y`. Para ello, se puede hacer la función `info_join` de `opadar`.
+
+
+```{r}
+opadar::info_join(alumnos, creditos)
+```
+
+En este caso, nos damos cuenta, en particular, que
+
+* una fila en `alumno` no tiene coincidencia en `creditos`.
+
+* una fila en `alumno` tiene más de una coincidencia en `creditos`.
+
+La síntaxis de los argumentos de `info_join` es exactamente la misma que para los verbos `..._join` de `dplyr`, por lo que se puede usar en particular `by = `, etc...
+
+## Para escribir un dataframe a un archivo Excel, usando openxlsx
+
+Muchas de los datos/indicadores solicitados por los usuarios de la OPADA se proporcionan en un archivo Excel. Puede contener varias hojas, y en cada hoja una o varias tablas con un título explicativo para cada una. La función `escribirTablaDatos` facilita y agrupa los diferentes pasos que se deben realizar usando `openxlsx`. Además permite la combinación vertical (merge) de celdas consecutivas que contienen el mismo valor.
+
+### Primer ejemplo: escribir un dataframe en un archivo.
+
+```{r}
+library("magrittr")
+library("opadar")
+(opada <- data.frame(Nombre = c("Álvaro", "Antonio", "Mari Carmen", "Mathieu"),
+                    Sexo = c("Hombre", "Hombre", "Mujer", "Hombre"),
+                    Edad = c(25, 25, 23, 25),
+                    Nacionalidad = c("720", "720", "720", "250")) )
+```
+
+Usamos el operador `%>%` de magrittr, para escribir los comandos en cadena:
+
+```{r, eval= FALSE}
+openxlsx::createWorkbook() %>% 
+  escribirTablaDatos(sheetName = "La OPADA",
+                       x = opada,
+                       titulo = "Miembros de la OPADA",
+                       areaTitulo = "A2:D2",
+                       withFilter = FALSE) %>%
+  openxslx::saveWorkbook("ejemplo1.xlsx", overwrite = TRUE)
+```
+Obtenemos el archivo siguiente:
+
+ ![](ejemplo1.png) 
+
+Podemos escribir dos tablas en la misma hoja, en una única cadena.
+
+```{r}
+(opada2 <- data.frame(Año = c("2014-15", "2015-16"),
+                     Importe = c( 0, 10000)))
+```
+
+```{r}
+openxlsx::createWorkbook() %>% 
+  escribirTablaDatos(sheetName = "La OPADA",
+                       x = opada,
+                       titulo = "Miembros de la OPADA",
+                       areaTitulo = "A2:D2",
+                       withFilter = FALSE) %>%
+  escribirTablaDatos(sheetName = "La OPADA",
+                     x = opada2,
+                     titulo = "Presupuesto de la OPADA",
+                     areaTitulo = "A11:D11",
+                     withFilter = FALSE) %>%
+  openxlsx::saveWorkbook("ejemplo2.xlsx", overwrite = TRUE)
+```
+
+Obtenemos el archivo siguiente:
+
+ ![](ejemplo2.png) 
+
