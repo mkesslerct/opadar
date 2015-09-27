@@ -40,7 +40,8 @@ For example \code{datapath <- "~/OPADA/data/"}.
 ## defines two data repositories
 datapath <- c("~/OPADA/data/", "./data/)
 
-\dontrun{
+\dontrun
+{
 datafile("mydata.txt")
 }
 ## In the case when "mydata.txt" is not found in "~OPADA/data/" but is located

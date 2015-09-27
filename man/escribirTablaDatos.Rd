@@ -84,7 +84,7 @@ createWorkbook() \%>\%
                         titulo = "Miembros de la OPADA",
                         areaTitulo = "A2:D2",
                         withFilter = FALSE) \%>\%
-     saveWorkbook("tmp/rr.xlsx", overwrite = TRUE)
+     saveWorkbook("ejemplo.xlsx", overwrite = TRUE)
 }
 ## Para más ejemplos, ver la vignette
 }

@@ -10,9 +10,10 @@ Description: The OPADA (Office for Prospection and Data Analysis in spanish) of 
   uses R intensively on a daily basis.
   This package collects useful funtions and codifications datasets which the members of OPADA have progressively developed as required.
 LazyData: TRUE
-Imports: 
+Imports:
   dplyr,
-  openxlsx
+  openxlsx,
+  stringr
 Suggests: knitr,
     rmarkdown
 VignetteBuilder: knitr

@@ -27,7 +27,8 @@
 #' ## defines two data repositories
 #' datapath <- c("~/OPADA/data/", "./data/)
 #'
-#' \dontrun{
+#' \dontrun
+#' {
 #' datafile("mydata.txt")
 #' }
 #' ## In the case when "mydata.txt" is not found in "~OPADA/data/" but is located
@@ -403,7 +404,7 @@ letraNIFE <-function(dni){
 #'                         titulo = "Miembros de la OPADA",
 #'                         areaTitulo = "A2:D2",
 #'                         withFilter = FALSE) %>%
-#'      saveWorkbook("tmp/rr.xlsx", overwrite = TRUE)
+#'      saveWorkbook("ejemplo.xlsx", overwrite = TRUE)
 #' }
 #' ## Para más ejemplos, ver la vignette
 #' @importFrom dplyr '%>%'
@@ -506,7 +507,8 @@ escribirTablaDatos <- function(wb,
                        which((colnames(x) %in% v))
                })
         }
-        columnas <- lapply(strsplit(spanColumns, ";"), FUN = f)
+        
+        columnas <- f(spanColumns)
         ## aplicamos el mergeCellsTabla de utility-functions.R a los distintos
         ## vectores componentes de la lista columnas.
         mergeCellsTabla(wb, sheetName = sheetName,
@@ -526,3 +528,36 @@ escribirTablaDatos <- function(wb,
                  widths = "auto", ignoreMergedCells = TRUE)
     invisible(wb)
 }
+#' Transforma una tabla 2d en un dataframe con el mismo formato
+#'
+#' Para escribir una tabla en openxlsx usando writeDataTable, es necesario
+#' que el objeto sea un dataframe. Esta función permite transformar una
+#' tabla de dimensión 2 en un dataframe para escribirla.
+#' El argumento cabecerafilas permite especificar en el nombre de cabecera
+#' de la columna que contiene las  filas del dataframe
+#'
+#' @param tabla La tabla que hay que convertir.
+#' @param cabecerafilas String. El nombre que se quiere asignar 
+#' @return Un dataframe que se puede usar para escribir en el fichero Excel con
+#' \code{escribirTablaDatos} o \code{writeDataTable}
+#' @examples
+#' v1 <- sample(LETTERS[1:4], 50, replace = TRUE)
+#' v2 <- sample(c("Hombre", "Mujer"), 50, replace = TRUE, prob = c(0.25, 0.75))
+#' x <-tabla2df(table(v1, v2), cabecerafilas = "Categoría")
+#' @importFrom dplyr '%>%'
+#' @export
+tabla2df <- function(tabla, cabecerafilas = ""){
+    ## Para escribir una tabla en openxlsx usando writeDataTable, es necesario
+    ## que el objeto sea un dataframe. Esta función permite transformar una
+    ## tabla de dimensión 2 en un dataframe para escribirla.
+    ## El argumento cabecerafilas permite especificar en el nombre de cabecera
+    ## de la columna que contiene las  filas del dataframe
+    if (length(dim(tabla)) != 2) stop("tabla tiene que tener dimensión 2")
+    tt <- as.data.frame.array(tabla)  
+    tt$nombresfilas <- row.names(tabla)
+    tt <- tt %>% 
+      dplyr::select(nombresfilas, everything())
+    names(tt)[1] <- cabecerafilas
+    tt
+}
+
