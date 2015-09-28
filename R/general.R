@@ -263,7 +263,7 @@ diffdataframe <- function(df1, df2, key, file = NULL){
   ## ---------------------------------------------------------------------------
   if (!is.null(file)){
       colores <- cambios  %>%
-        dplyr::mutate_each(funs(hacambiado(.)))
+        dplyr::mutate_each(dplyr::funs(hacambiado(.)))
       wb <- openxlsx::createWorkbook()
       options("openxlsx.borderColour" = "#4F80BD")
       options("openxlsx.borderStyle" = "thin")
@@ -271,7 +271,7 @@ diffdataframe <- function(df1, df2, key, file = NULL){
       openxlsx::addWorksheet(wb, sheetName = "Diff results")
       openxlsx::addWorksheet(wb, sheetName = "Rows that disappear from df1")
       openxlsx::addWorksheet(wb, sheetName = "Rows that appear in df2")
-      openxlsx::writeData(wb, "Diff results", cambios %>% select(-n))
+      openxlsx::writeData(wb, "Diff results", cambios %>% dplyr::select(-n))
       prevStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
                                          bgFill = "#FFC7CE")
       actuStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
