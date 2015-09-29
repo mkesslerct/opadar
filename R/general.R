@@ -560,4 +560,3 @@ tabla2df <- function(tabla, cabecerafilas = ""){
     names(tt)[1] <- cabecerafilas
     tt
 }
-
