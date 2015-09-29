@@ -135,11 +135,12 @@
 #' @keywords datasets
 #'
 #' @source Fichero auxiliar U06414AX0101_02 de SIIU.
-#' @format Un dataframe con 9 filas y 3 columnas
+#' @format Un dataframe con 9 filas y 4 columnas
 #' \itemize{
 #' \item NombreCentro String. Tal como aparece en el fichero auxiliar.
 #' \item CodigoSIIU String. El código del centro (campo "Unidad") en el fichero
 #' auxiliar de SIIU sobre centros.
-#' \item Acronimo'
+#' \item Acronimo
+#' item CodigoUXXI String. El código del centro en las BBDD de UXXI.'
 #' }
 "centrosUPCT"

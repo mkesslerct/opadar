@@ -3,7 +3,7 @@ library("dplyr")
 library("XML")
 library("opadar")
 datapath <- c("~/OPADA/paquetesr/opadar/data-raw/data/",
-              "~/OPADA/data/SIIU/")
+              "~/OPADA/data/SIIU/descargas/")
 siiu_codigos_erasmus <-
     read_excel(opadar::datafile("siiu_Codigos_70609.xls"),
                sheet = "Códigos_ERASMUS")
@@ -54,6 +54,15 @@ centrosUPCT <- xmlToDataFrame(datafile("U06414AX0101_02.XML")) %>%
              "ETSINO",
              "EUT",
              "ETSIT",
-             "ARQEDI"))
+             "ARQEDI"),
+         CodigoUXXI = c("222",
+             "6401",
+             "6402",
+             "6403",
+             "6404",
+             "6405",
+             "6407",
+             "6408",
+             "6410"))
 
-devtools::use_data(centrosUPCT)
+devtools::use_data(centrosUPCT, overwrite = TRUE)
