@@ -83,4 +83,38 @@ mergeCellsTabla <- function(wb, sheetName,
                        cols = startCol - 1 + columnas,
                        gridExpand = TRUE)
 }
-
+## -----------------------------------------------------------------------------
+changeNA  <- function(x, sustituto = ""){
+  x[is.na(x)] <- sustituto
+  return(x)
+}
+##
+profilingcolumna <- function(x){
+    t <- gsub(pattern = "[a-z]", replacement = "a", x)
+    t <- gsub(pattern = "[A-Z]", replacement = "A", t)
+    t <- gsub(pattern = "[0-9]", replacement = "d", t)
+    t <- gsub(pattern = " ", replacement = "[SPC]", t)
+    t
+}
+freqprofiling <- function(x,maxrow){
+  t <- ifelse(x == "", "\"\"", x)
+  tabla <- table(profilingcolumna(t), useNA = "always")
+  ## buscamos ordenarlos por orden decreciente pero poniendo el NA al final.
+  orden <- order(tabla, decreasing = TRUE)
+  indNA <- which(orden == dim(tabla))
+  tabla <- tabla[c(orden[-indNA], orden[indNA])]
+  rownames(tabla)[is.na(rownames(tabla))] <- "NA"
+  dd <- as.data.frame(tabla) %>%
+    dplyr::mutate(nombrefila = rownames(.),
+           celda = paste(nombrefila, " (", tabla, ")",
+                         sep = ""))
+  tablavalores <- table(t)[order(table(t), decreasing = TRUE)]
+  vv <- as.data.frame(tablavalores) %>%
+    dplyr::mutate(nombrefila = rownames(.),
+           celda = paste(nombrefila,
+                         " (", tablavalores, ")",
+                         sep = ""))
+  c(dd$celda[1:maxrow],
+    length(unique(t)),
+    vv$celda[1:5])
+}

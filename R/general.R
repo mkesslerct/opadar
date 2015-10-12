@@ -461,7 +461,7 @@ escribirTablaDatos <- function(wb,
     } else {
         ## si titulo es NULL, imponenemos que areaTitulo corresponda al valor
         ## por defecto
-        titulocolumnrow <- getcellrowcolumn("A1:C1")
+        titulocolumnrow <- getcellrowcolumn(c("A1", "C1"))
     }
     ## -------------------------------------------------------------------------
     ##
@@ -559,4 +559,48 @@ tabla2df <- function(tabla, cabecerafilas = ""){
       dplyr::select(nombresfilas, everything())
     names(tt)[1] <- cabecerafilas
     tt
+}
+##
+##
+##
+#' Realiza el profiling de un dataframe
+#'
+#' Proporciona una matriz que contiene información de profiling sobre el
+#' dataframe. Está sobre todo pensado para dataframes con columnas strings, o
+#' numéricas pero que toman unos pocos valores (típicamente ficheros SIIU). No
+#' proporciona resúmenes numéricos de columnas continuas.
+#'
+#' @param datos El dataframe
+#' @return Una matriz de strings, que se puede usar en un informe Rmd por
+#'   ejemplo.
+#' @examples
+#' opada <- data.frame(Nombre = c("Álvaro", "Antonio", "Mari Carmen",
+#'                                "Mathieu"),
+#'                    Sexo = c("Hombre", "Hombre", "Mujer", "Hombre"),
+#'                      Edad = c(25, 25, 23, 25),
+#'                      Nacionalidad = c("720", "720", "720", "250"))
+#' profilingdf(opada)
+#' ## para usar en un informe Rmd, salida html:
+#' print(xtable::xtable(profilingdf(opada)), type = "html", include.rownames = FALSE)
+#' @importFrom dplyr '%>%'
+#' @export
+profilingdf <- function(datos){
+    ## devuelve una matrix de strings.
+    maxrow <- max(apply(datos, 2,
+                        function(x) length(row.names(table(profilingcolumna(x),
+                                                           useNA = "always")))))
+    ## limitamos a 5 los patrones posibles
+    maxrow <- min(maxrow, 5)
+    matprofiling <-
+        t(matrix(unlist(lapply(datos,
+                               function(x) changeNA(freqprofiling(x, maxrow)))),
+                 nrow=maxrow + 6, byrow=F))  
+    matprofiling <- as.data.frame(matrix(c(names(datos),matprofiling),
+                                         nrow = nrow(matprofiling),
+                                         byrow = FALSE))
+    names(matprofiling) <- c("Variable",
+                             paste("Patrón", 1:(ncol(matprofiling)-7)),
+                             "Número distintos",
+                             paste("Valor", 1:5))
+    matprofiling
 }
