@@ -604,3 +604,67 @@ profilingdf <- function(datos){
                              paste("Valor", 1:5))
     matprofiling
 }
+##
+##
+##
+#' Extrae los nombres de las tablas de una consulta SQL
+#'
+#' Proporciona una lista con los nombres de las tablas de las que tira la
+#' consulta SQL considerada. Es vectorizada, por lo que se puede pasar un vector
+#' de consultas SQL. 
+#'
+#' @param sqlselect String.  Un vector que contiene las consultas select sql.
+#' @return Una lista de la misma longitud de `sqlselect`. El elemento i de esta
+#'   lista es un vector que contiene las tablas usadas en la consulta elemento i
+#'   de sqlselect.
+#' @examples
+#' sqlselect <- c( "select * from tabla1 t1",
+#'                 "select  from tabla2 where tabla2.key = '1'")
+#' extraetablas(sqlselect)
+#' ## Un ejemplo más complejo:
+#' sqlselect <- "select distinct ctm.any_anyaca TIPMAT_ANYACA, tm.codnum  TIPMAT_COD,
+#' tm.desid2 TIPMAT_DESC, e.PLA_CODALF EXP_PLA, e.NUMORD EXP_NUMORD,
+#' e.ALU_DNIALU, p.LLENIF ALU_DNILETRA
+#' from acad_talu_cpstipmatricula ctm
+#' left join acad_talu_tipmatricula tm
+#'     on ctm.TMA_CODNUM = tm.CODNUM
+#' left join (select * from acad_talu_linmatricula where etalma is null) lm
+#'     on lm.PLA_CODALF = ctm.PLA_CODALF and lm.EXP_NUMORD = ctm.EXP_NUMORD and
+#'  lm.ANY_ANYACA = ctm.ANY_ANYACA
+#' left join acad_talu_expedient e
+#'     on e.PLA_CODALF = ctm.PLA_CODALF and e.NUMORD = ctm.EXP_NUMORD
+#' left join acad_tuib_persona p
+#'     on p.DNIPRS = e.ALU_DNIALU
+#' where ctm.ANY_ANYACA = '2015-16'
+#' order by TIPMAT_DESC"
+#' extraetablas(sqlselect)
+#' @importFrom dplyr '%>%'
+#' @export
+extraetablas <- function(sqlselect){
+  ## quitamos retorno de carros, sustituimos espacios duplicados por un único
+  ## espacio, quitamos espacios antes de coma.
+  sqlselect <- sqlselect %>%
+    gsub(pattern = "\n", replacement =" ") %>%
+    gsub(pattern = " +", replacement = " ") %>%
+     gsub(pattern = " +,", replacement = ",")
+  ## sustituimos left right outer cross, natural joins por "join".
+  sqlselect <- sqlselect %>%
+    gsub(pattern = " (left|right) (outer )*join",
+         replacement = " join", ignore.case = TRUE) %>%
+    gsub(pattern = "( inner| cross)* join",
+         replacement = " join", ignore.case = TRUE) %>%
+    gsub(pattern = "natural (((left|right)( outer)*) |inner )*join",
+         replacement = "join",
+         ignore.case = TRUE)
+  ## cambiamos los FROM a from
+  sqlselect <- sqlselect %>%
+    gsub(pattern = " from ",
+         replacement = " from ",
+         ignore.case = TRUE)
+  ## obtenemos una lista con los vectores de subconsultas (getsubconsultas en
+  ## utility-functions.R) 
+  listsqlselect <- getsubconsultas(sqlselect)
+  ## aplicamos la función tablexpression en utility-functions.R para extraer las
+  ## tablas. 
+  lapply(listsqlselect, function(sqlstring) unlist(tableexpression(sqlstring)))
+}

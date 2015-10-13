@@ -118,3 +118,110 @@ freqprofiling <- function(x,maxrow){
     length(unique(t)),
     vv$celda[1:5])
 }
+##
+extractinside <- function(string, left.border,
+                          right.border){
+  ## devuelve una lista de misma longitud que string, que contiene las partes
+  ## comprendidas entre left.border y right.border en cada elemento de string.
+  if (right.border == "$") {
+    rightpattern <- "$"
+  } else {
+    rightpattern <- paste0("(?=",  right.border, ")")
+  }
+  if (left.border == "^"){
+    leftpattern <- "^"
+  } else {
+    leftpattern <- paste0("(?<=", left.border, ")")
+  }
+  pattern <- paste0(leftpattern, "(.*?)+", rightpattern)
+  rx <- gregexpr(pattern , text = string, perl = TRUE,
+                 ignore.case = TRUE)
+  f <- function(position, length, string){
+    substr(string, start = position,
+          stop = position + length)
+  }
+  g <- function(rx1, string){
+    mapply(FUN = f,rx1, attr(rx1, "match.length")-1, string = string)
+  }
+  mapply(g, rx, string, SIMPLIFY = FALSE)
+}
+##
+getsubconsultas <- function(sqlselect){
+  ## devuelve una lista: el  elemento i de la lista es un vector que contiene las
+  ## subconsultas (deben ser enmarcadas por "()") contenidas en sqlselect[i].
+    closestpar <- stringr::str_extract_all(sqlselect, "\\([^()]+\\)")
+    listasubconsultas <- closestpar
+    while (max(sapply(closestpar, FUN = length)) > 0) {
+        sqlselect <- stringr::str_replace_all(sqlselect, "\\([^()]+\\)",
+                                              "subconsulta")
+        closestpar <- stringr::str_extract_all(sqlselect, "\\([^()]+\\)")
+        listasubconsultas <- mapply(FUN = c, listasubconsultas, closestpar)
+    }
+  listasubconsultas <- mapply(FUN = function(x,y) c(x, y),
+                               listasubconsultas,
+                               sqlselect,
+                              SIMPLIFY = FALSE)
+    lapply(listasubconsultas, function(v) gsub("\\(|\\)", "", v))
+}
+## las palabras que servirán de right.border para from y para join
+reservedwordsfrom <- c("WHERE ",
+                   "GROUP BY ",
+                   "HAVING ",
+                   "ORDER BY ",
+                   "LIMIT ",
+                   "PROCEDURE ",
+                   "INTO ",
+                   "FOR UPDATE ",
+                   "LOCK IN ")
+reservedwordsjoin <- c("ON ",
+                   "USING ")
+tableexpression <- function(sqlselect){
+  ## sqlselect: vector de strings,
+  ## devuelve una lista: el elemento i es el vector de tablas contenidas en la
+  ## consulta en sqlselect[i]
+  left.border <- "from"
+  right.border <- paste0("(", paste(reservedwordsfrom,
+                                   collapse = "|"),
+                         ")")
+  strings1 <- extractinside(sqlselect, left.border, right.border)
+  ##
+  strings2 <- extractinside(sqlselect, left.border, "$")
+  combina12 <- function(string1, string2){
+    ## combina string1 y string2: si string1 es "", pone string2.
+    if (identical(string1,  "")) {
+      stringoutput <- string2
+    } else {
+      stringoutput <- string1
+    }
+  }
+  stringsfrom <- mapply(combina12, strings1, strings2, SIMPLIFY = FALSE)
+  stringsjoin1 <- sapply(stringsfrom, extractinside, left.border = "^",
+                         right.border = "join")
+  if (!is.list(stringsjoin1)) stringsjoin1 <- as.list(stringsjoin1)
+  stringsjoin1 <- mapply(combina12, stringsjoin1, stringsfrom, SIMPLIFY = FALSE)
+  left.border = "join "
+  right.border <- paste0("(", paste(reservedwordsjoin,
+                                    collapse = "|"), ")")
+  stringsjoin2 <- sapply(stringsfrom, extractinside, left.border = " join ",
+         right.border = right.border)
+  if (!is.list(stringsjoin2)) stringsjoin2 <- as.list(stringsjoin2)
+  stringsfromjoin <- mapply(FUN = function(x, y) c(x, y),
+                            stringsjoin1, stringsjoin2, SIMPLIFY = FALSE)
+  stringsfromjoin <- lapply(stringsfromjoin,
+                            stringr::str_trim)
+  ## queda separar las tablas que van con comas...
+  tablas <- lapply(stringsfromjoin,
+         function(string, pattern) {
+           unlist(stringr::str_split(string, pattern))
+         },
+         pattern = ",") %>%
+    lapply(stringr::str_trim)
+  
+  tablassinalias <- function(tablastring){
+    splitspace <- stringr::str_split(tablastring, " ")
+    tablasalias <- sapply(splitspace, '[', 2)
+    tablaspropias <- sapply(splitspace, '[', 1)
+    setdiff(tablaspropias, c(tablasalias, "", "subconsulta"))
+  }
+  lapply(tablas, tablassinalias)
+}

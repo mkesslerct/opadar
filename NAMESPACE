@@ -3,6 +3,7 @@
 export(datafile)
 export(diffdataframe)
 export(escribirTablaDatos)
+export(extraetablas)
 export(info_join)
 export(letraNIFE)
 export(profilingdf)
