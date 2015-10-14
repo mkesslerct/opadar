@@ -593,7 +593,7 @@ profilingdf <- function(datos){
     maxrow <- min(maxrow, 5)
     matprofiling <-
         t(matrix(unlist(lapply(datos,
-                               function(x) changeNA(freqprofiling(x, maxrow)))),
+                               function(x) cambiaNA(freqprofiling(x, maxrow)))),
                  nrow=maxrow + 6, byrow=F))  
     matprofiling <- as.data.frame(matrix(c(names(datos),matprofiling),
                                          nrow = nrow(matprofiling),
@@ -668,3 +668,22 @@ extraetablas <- function(sqlselect){
   ## tablas. 
   lapply(listsqlselect, function(sqlstring) unlist(tableexpression(sqlstring)))
 }
+##
+#' Sustituye en un vector los NA por un string 
+#'
+#' Sustituye en un vector los NA, por el string `sustituto` que debe ser de
+#' longitud 1.
+#'
+#' @param x el vector
+#' @param sustituto string. Debe de ser longitud 1. Su defecto es "".
+#' @return Un vector de misma longitud que x, donde los NA han sido sustituido
+#'   por `sustituto`.
+#' @examples
+#' changeNA(c(NA, "a", "b", NA)
+#' changeNA(c(NA, "a", "b", NA), sustituto = "blanco")
+#' @export
+cambiaNA  <- function(x, sustituto = ""){
+  if (length(sustituto)>1) stop("sustituto debe ser de longitud 1")
+  x[is.na(x)] <- sustituto
+  x
+ }

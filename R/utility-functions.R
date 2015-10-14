@@ -84,10 +84,6 @@ mergeCellsTabla <- function(wb, sheetName,
                        gridExpand = TRUE)
 }
 ## -----------------------------------------------------------------------------
-changeNA  <- function(x, sustituto = ""){
-  x[is.na(x)] <- sustituto
-  return(x)
-}
 ##
 profilingcolumna <- function(x){
     t <- gsub(pattern = "[a-z]", replacement = "a", x)
