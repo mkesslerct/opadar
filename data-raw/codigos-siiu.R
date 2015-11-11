@@ -3,7 +3,7 @@ library("dplyr")
 library("XML")
 library("opadar")
 datapath <- c("~/OPADA/paquetesr/opadar/data-raw/data/",
-              "~/OPADA/data/SIIU/descargas/")
+              "~/OPADA/data/SIIU/ficheros/")
 siiu_codigos_erasmus <-
     read_excel(opadar::datafile("siiu_Codigos_70609.xls"),
                sheet = "Códigos_ERASMUS")

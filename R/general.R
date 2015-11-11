@@ -262,15 +262,16 @@ diffdataframe <- function(df1, df2, key, file = NULL){
   ## --    Write to xlsx file
   ## ---------------------------------------------------------------------------
   if (!is.null(file)){
+    wb <- openxlsx::createWorkbook()
+    options("openxlsx.borderColour" = "#4F80BD")
+    options("openxlsx.borderStyle" = "thin")
+    openxlsx::modifyBaseFont(wb, fontSize = 10, fontName = "Arial Narrow")
+    openxlsx::addWorksheet(wb, sheetName = "Diff results")
+    openxlsx::addWorksheet(wb, sheetName = "Rows that disappear from df1")
+    openxlsx::addWorksheet(wb, sheetName = "Rows that appear in df2")
+    if (nrow(cambios) > 1){
       colores <- cambios  %>%
         dplyr::mutate_each(dplyr::funs(hacambiado(.)))
-      wb <- openxlsx::createWorkbook()
-      options("openxlsx.borderColour" = "#4F80BD")
-      options("openxlsx.borderStyle" = "thin")
-      openxlsx::modifyBaseFont(wb, fontSize = 10, fontName = "Arial Narrow")
-      openxlsx::addWorksheet(wb, sheetName = "Diff results")
-      openxlsx::addWorksheet(wb, sheetName = "Rows that disappear from df1")
-      openxlsx::addWorksheet(wb, sheetName = "Rows that appear in df2")
       openxlsx::writeData(wb, "Diff results", cambios %>% dplyr::select(-n))
       prevStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
                                          bgFill = "#FFC7CE")
@@ -282,15 +283,16 @@ diffdataframe <- function(df1, df2, key, file = NULL){
           openxlsx::addStyle(wb, 1, style = actuStyle, rows = 1 + which(colores[,j] == TRUE),
                    cols = rep(j, sum(colores[,j] == TRUE)))
       }
-      df1notin2 <- df1 %>%
-        dplyr::anti_join(df2, by = key) %>%
-        dplyr::mutate(origen = NULL)
-      openxlsx::writeData(wb, 2, df1notin2)
-      df2notin1 <- df2 %>%
-        dplyr::anti_join(df1, by = key) %>%
-        dplyr::mutate(origen = NULL)
-      openxlsx::writeData(wb, 3, df2notin1)
-      openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+    }
+    df1notin2 <- df1 %>%
+      dplyr::anti_join(df2, by = key) %>%
+      dplyr::mutate(origen = NULL)
+    openxlsx::writeData(wb, 2, df1notin2)
+    df2notin1 <- df2 %>%
+      dplyr::anti_join(df1, by = key) %>%
+      dplyr::mutate(origen = NULL)
+    openxlsx::writeData(wb, 3, df2notin1)
+    openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
   }
   invisible(cambios)
 }
