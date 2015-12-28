@@ -5,15 +5,17 @@ Version: 0.1.3
 Date: 2015-09-26
 Authors@R: person("Mathieu", "Kessler", email = "mathieu.kessler@upct.es",
   role = c("aut", "cre"))
-Description: The OPADA (Office for Prospection and Data Analysis in spanish) of the Universidad Politecnica de Cartagena
-  (UPCT)
-  uses R intensively on a daily basis.
-  This package collects useful funtions and codifications datasets which the members of OPADA have progressively developed as required.
+Description: The OPADA (Office for Prospection and Data Analysis in spanish) of
+    the Universidad Politecnica de Cartagena (UPCT) uses R intensively on a daily
+    basis. This package collects useful funtions and codifications datasets which
+    the members of OPADA have progressively developed as required.
 LazyData: TRUE
 Imports:
-  dplyr,
-  openxlsx,
-  stringr
-Suggests: knitr,
+    dplyr,
+    openxlsx,
+    stringr
+Suggests:
+    knitr,
     rmarkdown
 VignetteBuilder: knitr
+RoxygenNote: 5.0.1

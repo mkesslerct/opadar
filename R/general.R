@@ -386,6 +386,11 @@ letraNIFE <-function(dni){
 #' tiene su propio estructura de combinación vertical, pero está supedita a las
 #' combinaciones de \code{profesor}. Ver la vignette para más explicaciones y
 #' ejemplos.
+#' @param transpose Logical. Indica si se quiere escribir el dataframe
+#'   transpuesto.
+#' @param colNames String o Logical. Si es FALSE, no se escriben el nombre de
+#'   las columnas del dataframe. Si es un vector de caracteres de la misma
+#'   longitud que el número de columnas de \code{x}, se usan este vector para escribir.
 #' @return Un workbook que es invisible. 
 #' @examples
 #' library("magrittr")
@@ -397,8 +402,7 @@ letraNIFE <-function(dni){
 #'                      Nacionalidad = c("720", "720", "720", "250")) 
 #'
 #'## Escribimos en un fichero
-#' \dontrun
-#' {
+#' \dontrun{
 #' createWorkbook() %>%
 #'      escribirTablaDatos(createWorkbook(),
 #'                         sheetName = "La OPADA",
@@ -415,120 +419,146 @@ escribirTablaDatos <- function(wb,
                                sheetName,
                                x,
                                titulo = NULL,
-                               titleStyle = NULL, headerStyle = NULL,
+                               titleStyle = "defecto",
+                               headerStyle = "defecto",
                                areaTitulo = "A1:C1",
                                upperleftCell = NULL,
                                spanColumns = NULL,
+                               transpose = FALSE,
+                               colNames = colnames(x),
                                ...){
-    ## -------------------------------------------------------------------------
-    ##
-    ## Comprobamos si existe ya sheetName, y en caso contrario creamos la hoja
-    ##
-    ## -------------------------------------------------------------------------
-    if (length(grep(sheetName, names(wb))) == 0){
-        openxlsx::addWorksheet(wb, sheetName = sheetName)
-    }
-    ## -------------------------------------------------------------------------
-    ##
-    ## Escribimos el titulo
-    ##
-    ## -------------------------------------------------------------------------
-    if (!is.null(titulo)){
-        u <- regexpr("[A-Z]+[1-9][0-9]*:[A-Z]+[1-9][0-9]*", areaTitulo)
-        if (!identical(attr(u, "match.length"),
-                       stringr::str_length(areaTitulo))){
-            stop("Incorrect  specification for areaTitulo, it should be of the form \"A1:B5\" ")
-    }
-        areaTitulo <-
-            unlist(stringr::str_extract_all(areaTitulo, "[A-Z]+[1-9][0-9]*"))
-        titulocolumnrow <- getcellrowcolumn(areaTitulo)
-        openxlsx::writeData(wb, sheet = sheetName, x = titulo,
-                            colNames = FALSE, rowNames = FALSE,
-                            startRow = titulocolumnrow$row[1],
-                            startCol = titulocolumnrow$col[1])
-        ## estilo del título
-        if (is.null(titleStyle)) {
-            titleStyle <- openxlsx::createStyle(fontSize = 12,
-                                      textDecoration = c("bold", "italic"),
-                                      valign = "center",
-                                      halign = "center")
-        }
-        openxlsx::addStyle(wb, sheetName,
-                 style = titleStyle, rows = titulocolumnrow$row[1],
-                 cols = titulocolumnrow$col[1])
-        ## combinamos las celdas del título
-        openxlsx::mergeCells(wb, sheetName,
-                   cols = titulocolumnrow$column,
-                   rows = titulocolumnrow$row)
+  ## ---------------------------------------------------------------------------
+  ##
+  ## Nos ocupamos de colNames: si es un
+  if (is.character(colNames) && length(colNames) == ncol(x))  {
+    nombrescolumnas <- colNames
+    colNames <- TRUE
+  } else {
+    if (! is.logical(colNames) ) {
+      stop("El argumento colNames debe ser o bien lógico o bien un vector de caracteres de la misma longitud que names(x)")
     } else {
-        ## si titulo es NULL, imponenemos que areaTitulo corresponda al valor
-        ## por defecto
-        titulocolumnrow <- getcellrowcolumn(c("A1", "C1"))
+      nombrescolumnas <- colnames(x)
     }
-    ## -------------------------------------------------------------------------
-    ##
-    ## Escribimos el dataframe
-    ##
-    ## -------------------------------------------------------------------------
-    if (is.null(upperleftCell))
-    {
-        ulcell <- data.frame(column = min(titulocolumnrow$column),
-                             row = max(titulocolumnrow$row) + 2)
-    } else
-    {
-        ulcell <- getcellrowcolumn(upperleftCell)
+  }
+  ## -------------------------------------------------------------------------
+  ##
+  ## Comprobamos si existe ya sheetName, y en caso contrario creamos la hoja
+  ##
+  ## -------------------------------------------------------------------------
+  if (sum(sheetName %in%  names(wb)) == 0){
+    openxlsx::addWorksheet(wb, sheetName = sheetName)
+  }
+  ## -------------------------------------------------------------------------
+  ##
+  ## Escribimos el titulo
+  ##
+  ## -------------------------------------------------------------------------
+  if (!is.null(titulo)){
+    u <- regexpr("[A-Z]+[1-9][0-9]*:[A-Z]+[1-9][0-9]*", areaTitulo)
+    if (!identical(attr(u, "match.length"),
+                   stringr::str_length(areaTitulo))){
+      stop("Incorrect  specification for areaTitulo, it should be of the form \"A1:B5\" ")
     }
-    ## -------------------------------------------------------------------------
-    ##     Estilo del header del dataframe
-    ## -------------------------------------------------------------------------
-    if (is.null(headerStyle))
-    {
-     headerStyle <- openxlsx::createStyle(fontColour = "#ffffff", fgFill = "#4F80BD",
-                   halign = "center", valign = "center", textDecoration = "Bold",
-                   border = "TopBottomLeftRight")
+    areaTitulo <-
+      unlist(stringr::str_extract_all(areaTitulo, "[A-Z]+[1-9][0-9]*"))
+    titulocolumnrow <- getcellrowcolumn(areaTitulo)
+    openxlsx::writeData(wb, sheet = sheetName, x = titulo,
+                        colNames = FALSE, rowNames = FALSE,
+                        startRow = titulocolumnrow$row[1],
+                        startCol = titulocolumnrow$col[1])
+    ## estilo del título
+    if (identical(titleStyle, "defecto")) {
+      titleStyle <- openxlsx::createStyle(fontSize = 12,
+                                          textDecoration = c("bold", "italic"),
+                                          valign = "center",
+                                          halign = "center")
     }
     openxlsx::addStyle(wb, sheetName,
-             style = headerStyle,
-             rows = rep(ulcell$row[1], ncol(x)),
-             cols = ulcell$col[1] + 0:(ncol(x) -1))
-    ## -------------------------------------------------------------------------
-    ##
-    ## Combinamos celdas verticales que corresponden a valores consecutivos
-    ## iguales
-    ##
-    ## -------------------------------------------------------------------------
-    if (!is.null(spanColumns)){
-        ## obtenemos una lista con las posiciones de las columnas de spanColumns
-        f <- function(nombrescolumnas){
-            sapply(nombrescolumnas,
-                   FUN = function(v){
-                       if (sum(tt <- ! v %in% colnames(x))>0) {
-                           stop("Especificación incorrecta de spanColumns: ",
-                                v[tt], " no es(son) columna(s) del dataframe")
-                       }
-                       which((colnames(x) %in% v))
-               })
-        }
-        
-        columnas <- f(spanColumns)
-        ## aplicamos el mergeCellsTabla de utility-functions.R a los distintos
-        ## vectores componentes de la lista columnas.
-        mergeCellsTabla(wb, sheetName = sheetName,
-                        df = x,
-                        columnas = columnas,
-                        startRow = ulcell$row[1],
-                        startCol = ulcell$column[1])
+                       style = titleStyle, rows = titulocolumnrow$row[1],
+                       cols = titulocolumnrow$col[1])
+    ## combinamos las celdas del título
+    openxlsx::mergeCells(wb, sheetName,
+                         cols = titulocolumnrow$column,
+                         rows = titulocolumnrow$row)
+  } else {
+    ## si titulo es NULL, imponenemos que areaTitulo corresponda al valor
+    ## por defecto
+    titulocolumnrow <- getcellrowcolumn(c("A1", "C1"))
+  }
+  ## -------------------------------------------------------------------------
+  ##
+  ## Escribimos el dataframe
+  ##
+  ## -------------------------------------------------------------------------
+  if (is.null(upperleftCell)){
+    ulcell <- data.frame(column = min(titulocolumnrow$column),
+                         row = max(titulocolumnrow$row) + 2)
+  } else {
+    ulcell <- getcellrowcolumn(upperleftCell)
+  }
+  ## -------------------------------------------------------------------------
+  ##     Estilo del header del dataframe
+  ## -------------------------------------------------------------------------
+  if (identical(headerStyle, "defecto")){
+    headerStyle <- openxlsx::createStyle(fontColour = "#ffffff", fgFill = "#4F80BD",
+                                         halign = "center", valign = "center", textDecoration = "Bold",
+                                         border = "TopBottomLeftRight")
+  }
+  if (colNames) {
+    openxlsx::addStyle(wb, sheetName,
+                       style = headerStyle,
+                       rows = rep(ulcell$row[1], ncol(x)),
+                       cols = ulcell$col[1] + 0:(ncol(x) -1))
+  }
+  ## -------------------------------------------------------------------------
+  ##
+  ## Combinamos celdas verticales que corresponden a valores consecutivos
+  ## iguales
+  ##
+  ## -------------------------------------------------------------------------
+  if (!is.null(spanColumns)){
+    ## obtenemos una lista con las posiciones de las columnas de spanColumns
+    f <- function(nombrescolumnas){
+      sapply(nombrescolumnas,
+             FUN = function(v){
+               if (sum(tt <- ! v %in% colnames(x))>0) {
+                 stop("Especificación incorrecta de spanColumns: ",
+                      v[tt], " no es(son) columna(s) del dataframe")
+               }
+               which((colnames(x) %in% v))
+             })
     }
-    openxlsx::writeDataTable(wb, sheet = sheetName, x = x,
-                   colNames = TRUE, rowNames = FALSE,
-                   headerStyle = headerStyle ,
-                   startCol = ulcell$column,
-                   startRow = ulcell$row,
-                   ...)
-    openxlsx::setColWidths(wb, sheet = sheetName,
-                 cols = ulcell$column:(ulcell$column + ncol(x) - 1),
-                 widths = "auto", ignoreMergedCells = TRUE)
-    invisible(wb)
+    columnas <- f(spanColumns)
+    ## aplicamos el mergeCellsTabla de utility-functions.R a los distintos
+    ## vectores componentes de la lista columnas.
+    mergeCellsTabla(wb,
+                    sheetName = sheetName,
+                    df = x,
+                    columnas = columnas,
+                    startRow = ulcell$row[1],
+                    startCol = ulcell$column[1],
+                    transpose = transpose,
+                    colNames = colNames)
+  }
+  colnames(x) <- nombrescolumnas
+  if (transpose) {
+    x <- as.data.frame(t(x))
+    rowNames <- colNames
+    colNames <- FALSE
+  }
+  
+  openxlsx::writeData(wb, sheet = sheetName, x = x,
+                      headerStyle = headerStyle ,
+                      startCol = ulcell$column[1],
+                      startRow = ulcell$row[1],
+                      colNames = colNames,
+                      rowNames = rowNames,
+                      ...)
+  openxlsx::setColWidths(wb, sheet = sheetName,
+                         cols = ulcell$column:(ulcell$column + ncol(x) - 1),
+                         widths = "auto", ignoreMergedCells = TRUE)
+  
+  invisible(wb)
 }
 #' Transforma una tabla 2d en un dataframe con el mismo formato
 #'

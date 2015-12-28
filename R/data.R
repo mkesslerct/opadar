@@ -144,3 +144,16 @@
 #' item CodigoUXXI String. El código del centro en las BBDD de UXXI.'
 #' }
 "centrosUPCT"
+
+#' Planes de la UPCT.
+#'
+#' Planes de la  UPCT. 
+#' @docType data
+#'
+#' @usage data(planes_centros)
+#'
+#' @keywords datasets
+#'
+#' @source dwd_estudios.
+#' @format Un dataframe con 123 filas y 17columnas
+"planes_centros"

@@ -38,50 +38,73 @@ numberunicos=function(x){
 mergeCellsTabla <- function(wb, sheetName,
                             df,
                             columnas,
-                            startRow = 1, startCol = 1){
-    ## En el workbook wb, combina celdas, columna por columna, en las columnas
-    ## recogidas en el vector "columnas". columnas es un vector de
-    ## posiciones. Consiste en unir, columna por columna, celdas contiguas que
-    ## contienen el mismo valor.  Se impone además una jerarquía: se aplica las
-    ## combinaciones verticales sobre la primera columna de columnas, a
-    ## continuación se aplica las combinaciones verticales sobre la segunda
-    ## columna, pero sólo puede combinar celdas que corresponden a valores
-    ## iguales de la primera columnas. Y así sucesivamente, ver la vignette para
-    ## más información.
-    ## StartRow y StartCol indican la celda en el workbook
-    ## donde se escribirá (en otra instrucción fuera de esta función) la esquina
-    ## superior de la tabla df.
-    paramerge <- list()
-    for (l in 1:length(columnas)){
-        paramerge[[l]] <-
-            data.frame(numerounicos = numberunicos(df[, columnas[l]]),
-                       fila = (startRow -1) + 1 + 1:nrow(df))
-        if (l == 1) {
-            paramerge[[l]] <- paramerge[[l]]  %>%
-              dplyr::group_by(numerounicos) %>%
-              dplyr::mutate(numero = n())
-        } else {
-            paramerge[[l]] <- paramerge[[l]] %>%
-              dplyr::mutate(numerounicos = numerounicos +
-                       (get("numerounicos", paramerge[[l-1]]) - 1)) %>%
-              dplyr::group_by(numerounicos) %>%
-              dplyr::mutate(numero = n())
-        }
-        for (j in unique((paramerge[[l]] %>%
-                            dplyr::filter(numero > 1))$numerounicos)){
-                openxlsx::mergeCells(wb, sheetName,
-                                     cols = startCol - 1 + columnas[l],
-                                     rows = (paramerge[[l]] %>%
-                                               dplyr::filter(numerounicos == j))$fila)
-            }
+                            startRow = 1, startCol = 1,
+                            transpose = FALSE,
+                            colNames = TRUE){
+  ## En el workbook wb, combina celdas, columna por columna, en las columnas
+  ## recogidas en el vector "columnas". columnas es un vector de
+  ## posiciones. Consiste en unir, columna por columna, celdas contiguas que
+  ## contienen el mismo valor.  Se impone además una jerarquía: se aplica las
+  ## combinaciones verticales sobre la primera columna de columnas, a
+  ## continuación se aplica las combinaciones verticales sobre la segunda
+  ## columna, pero sólo puede combinar celdas que corresponden a valores
+  ## iguales de la primera columnas. Y así sucesivamente, ver la vignette para
+  ## más información.
+  ## startRow y startCol indican la celda en el workbook
+  ## donde se escribirá (en otra instrucción fuera de esta función) la esquina
+  ## superior de la tabla df.
+  ## En el caso en que queremos escribir el dataframe transpuesto
+  if (transpose) {
+    startRow.tmp <- startCol
+    startCol <- startRow
+    startRow <- startRow.tmp
+  }
+  paramerge <- list()
+  for (l in 1:length(columnas)){
+    paramerge[[l]] <-
+      data.frame(numerounicos = numberunicos(df[, columnas[l]]),
+                 fila =  1:nrow(df))
+    if (l == 1) {
+      paramerge[[l]] <- paramerge[[l]]  %>%
+        dplyr::group_by(numerounicos) %>%
+        dplyr::mutate(numero = n())
+    } else {
+      paramerge[[l]] <- paramerge[[l]] %>%
+        dplyr::mutate(numerounicos = numerounicos +
+                        (get("numerounicos", paramerge[[l-1]]) - 1)) %>%
+        dplyr::group_by(numerounicos) %>%
+        dplyr::mutate(numero = n())
     }
-    vhcenterStyle <- openxlsx::createStyle(valign = "center",
-                                           halign = "center")
-    openxlsx::addStyle(wb, sheetName,
-                       style = vhcenterStyle,
-                       rows = startRow - 1 + 2:(nrow(df)+1),
-                       cols = startCol - 1 + columnas,
-                       gridExpand = TRUE)
+    for (j in unique((paramerge[[l]] %>%
+                        dplyr::filter(numero > 1))$numerounicos)){
+      argcols <- startCol - 1 + columnas[l]
+      argrows <- (paramerge[[l]] %>%
+                    dplyr::filter(numerounicos == j))$fila +
+                                                    (startRow -1) + colNames
+      if (transpose) {
+        argrows.tmp <- argcols
+        argcols <- argrows
+        argrows <- argrows.tmp
+      }
+      openxlsx::mergeCells(wb, sheetName,
+                           cols = argcols,
+                           rows = argrows)
+    }
+  }
+  vhcenterStyle <- openxlsx::createStyle(valign = "center",
+                                         halign = "center")
+  argrows <- startRow - 1 + colNames + 1:nrow(df)
+  argcols <- startCol - 1 + columnas
+  if (transpose) {
+    argrows.tmp <- argcols
+    argcols <- argrows
+    argrows <- argrows.tmp
+  }
+  openxlsx::addStyle(wb, sheetName,
+                     style = vhcenterStyle,
+                     rows = argrows,
+                     cols = argcols,
+                     gridExpand = TRUE)
 }
 ## -----------------------------------------------------------------------------
 ##
