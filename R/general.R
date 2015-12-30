@@ -197,15 +197,25 @@ info_join <- function(x, y, ...){
 #' \code{openxlsx} package) with the three sheets. The first sheet contains the rows
 #' with highlighted  differences, the second sheet contains the rows of
 #' \code{df1} that have no match in \code{df2}, while the third sheet contains
-#' the rows of \code{df2} with no match in \code{df1}.
+#' the rows of \code{df2} with no match in \code{df1}. The differences may be
+#' associated to exact matches or  a relative error greater than \code{umbral}
+#' for numerical columns.
 #'
 #' @param df1, df2 dataframes. They should have the same columns, even if they
 #' appear in a different order (\code{rbind(df1, df2)} should make sense)
 #' @param key String vector. A vector of columns names which serve as a unique identifier.
 #' @param file String. The name of an xlsx file where the differences between
 #' \code{df1} and \code{df2} are written.
+#' @param numcol string vector. A vector of columns names which are numeric and
+#'   for which relative error should be checked. If the relative difference
+#'   (w.r.t the value of first dataframe) is greater than umbral, it will be
+#'   highlighted. Default NULL. 
+#' @param umbral numeric. A value that serves as a threshold for the relative
+#'   difference in \code{numcol}. It should be a number between 0 and 1. The
+#'   default is 0.05 (5%).
 #' @return To access the dataframe that contains the differences, the output of
 #' \code{diffdataframe} should be assigned to a variable.
+#' 
 #' @examples
 #' library("dplyr")
 #' ## consider two dataframes
@@ -219,32 +229,36 @@ info_join <- function(x, y, ...){
 #'  diffdataframe(df1, df2, key = c("x", "year"), file = "diff-df1-vs-df2.xlsx")
 #' ## write the resulting dataframe to an object for further use:
 #' diff_df1_df2 <- diffdataframe(df1, df2, key = c("x", "year"))
-#'
+#' df1$z <- rep(100, 3)
+#' df2$z <- c(95, 106, 100)
+#' diffdataframe(df1, df2, key = c("x", "year"), numcol = "z", file = "diff-df1-vs-df2.xlsx")
 #' @importFrom dplyr '%>%'
 #' @export
-diffdataframe <- function(df1, df2, key, file = NULL){
+diffdataframe <- function(df1, df2, key, file = NULL, numcol = NULL,
+                          umbral = 0.05){
   if (length(dplyr::union(dplyr::setdiff(names(df1), names(df2)),
-                  dplyr::setdiff(names(df2), names(df1)))) > 0)
-  {
+                  dplyr::setdiff(names(df2), names(df1)))) > 0){
     stop("names of df1 and df2 present differences")
   }
-  if (sum(duplicated(df1[key])) > 0)
-  {
+  if (sum(duplicated(df1[key])) > 0){
     stop("key is not a unique key of df1")
-  } else
-    {
-      if (sum(duplicated(df2[key])) > 0)
-      {
+  } else {
+      if (sum(duplicated(df2[key])) > 0){
         stop("key is not a unique key of df2")
       }
-    }
-  hacambiado <- function(x)
-  {
+  }
+  hacambiado <- function(x){
       rep(!duplicated(x)[2], 2)
+  }
+  haydiferenciarelativa <- function(x, umbral){
+    rep(abs(diff(x)/x[1]) > umbral, 2)
   }
   df1$origen <- "1"
   df2$origen <- "2"
   df12 <- rbind(df1, df2)
+  if (sum(sapply(as.list(df12[numcol]), FUN = function(x) !is.numeric(x))) >0){
+    stop("Hay columnas no númericas en la especificación de numcol")
+  }
   arrg_cols <- c(key, "origen")
   grp_cols <- key
   # Convert character vector to list of symbols
@@ -252,12 +266,34 @@ diffdataframe <- function(df1, df2, key, file = NULL){
   dotsgrp <- lapply(grp_cols, as.symbol)
   cambios <- df12 %>%
     dplyr::arrange_(.dots = dotsarrg) %>%
-    dplyr::select(-origen) %>%
-    dplyr::distinct() %>%
+    dplyr::select(-origen)
+  ## Primero creamos un df con una columna que indique si el id tiene fila
+  ## duplicado o no (quitando las columnas declaradas como númericas en numcol)
+  ndup.df <- cambios[setdiff(names(cambios),numcol)] %>%
+    distinct %>% 
     dplyr::group_by_(.dots = dotsgrp) %>%
-    dplyr::mutate(n = n())  %>%
-    dplyr::filter(n > 1)
-
+    mutate(ndup = n()) %>%
+    ungroup() %>% 
+    select_(.dots = lapply(c(key, "ndup"), as.symbol)) %>%
+    distinct
+  ## Ahora creamos un df con una columna que indique si las columnas númericas
+  ## presentan, id por por id, una diferencia relativa superior a 0.05.
+  if (!is.null(numcol)){
+    numdiff <- cambios[c(key , numcol)] %>%
+      dplyr::group_by_(.dots = dotsgrp) %>%
+      mutate_each_(funs(abs(diff(.)/.[1]) > 0.05), vars = numcol) %>%
+      ungroup() %>% 
+      select_(numcol) %>% 
+      rowSums
+  } else {
+    numdiff <- 0
+  }
+  num.df <- data.frame(id = get(key, cambios), numdiff) %>% distinct
+  ## finalmente cambios contiene el df que presente registros id con ndup > 1 o
+  ## bien numdiff > 0. 
+  cambios <- cambios %>% left_join(ndup.df) %>%
+    left_join(num.df) %>%
+    filter(ndup > 1 | numdiff > 0)
   ## ---------------------------------------------------------------------------
   ## --    Write to xlsx file
   ## ---------------------------------------------------------------------------
@@ -271,17 +307,29 @@ diffdataframe <- function(df1, df2, key, file = NULL){
     openxlsx::addWorksheet(wb, sheetName = "Rows that appear in df2")
     if (nrow(cambios) > 1){
       colores <- cambios  %>%
-        dplyr::mutate_each(dplyr::funs(hacambiado(.)))
-      openxlsx::writeData(wb, "Diff results", cambios %>% dplyr::select(-n))
+        group_by_(.dots = dotsgrp) %>% 
+        dplyr::mutate_each_(dplyr::funs(hacambiado(.)),
+                            vars = setdiff(names(df1), c(numcol, "origen")))
+      if (!is.null(numcol)){
+        colores <- colores %>%
+          dplyr::mutate_each_(dplyr::funs(haydiferenciarelativa(., umbral = umbral)),
+                              vars = numcol)
+      }
+      colores <- colores %>% ungroup
+      colores[key] <- FALSE
+      openxlsx::writeData(wb, "Diff results",
+                          cambios[setdiff(names(df1), "origen")])
       prevStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
                                          bgFill = "#FFC7CE")
       actuStyle <- openxlsx::createStyle(fontColour = "#FFFFFF",
                                          bgFill = "red")
-      for (j in 1:(ncol(cambios) - 1)){
-          openxlsx::addStyle(wb, 1, style = prevStyle, rows = 1 + which(colores[,j] == TRUE),
-                   cols = rep(j, sum(colores[,j] == TRUE)))
-          openxlsx::addStyle(wb, 1, style = actuStyle, rows = 1 + which(colores[,j] == TRUE),
-                   cols = rep(j, sum(colores[,j] == TRUE)))
+      for (j in 1:(ncol(cambios) - 2)){
+#          openxlsx::addStyle(wb, 1, style = prevStyle, rows = 1 + which(colores[,j] == TRUE),
+#                   cols = rep(j, sum(colores[,j] == TRUE)))
+        openxlsx::addStyle(wb, 1,
+                           style = actuStyle,
+                           rows = 1 + which(colores[,j] == TRUE),
+                           cols = rep(j, sum(colores[,j] == TRUE)))
       }
     }
     df1notin2 <- df1 %>%

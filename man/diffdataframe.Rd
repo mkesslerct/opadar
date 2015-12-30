@@ -4,7 +4,7 @@
 \alias{diffdataframe}
 \title{Performs a diff between two dataframes}
 \usage{
-diffdataframe(df1, df2, key, file = NULL)
+diffdataframe(df1, df2, key, file = NULL, numcol = NULL, umbral = 0.05)
 }
 \arguments{
 \item{df1, }{df2 dataframes. They should have the same columns, even if they
@@ -14,6 +14,15 @@ appear in a different order (\code{rbind(df1, df2)} should make sense)}
 
 \item{file}{String. The name of an xlsx file where the differences between
 \code{df1} and \code{df2} are written.}
+
+\item{numcol}{string vector. A vector of columns names which are numeric and
+for which relative error should be checked. If the relative difference
+(w.r.t the value of first dataframe) is greater than umbral, it will be
+highlighted. Default NULL}
+
+\item{umbral}{numeric. A value that serves as a threshold for the relative
+difference in \code{numcol}. It should be a number between 0 and 1. The
+default is 0.05 (5%).}
 }
 \value{
 To access the dataframe that contains the differences, the output of
@@ -27,7 +36,9 @@ present some differences, and optionally, write a xlsx file (using the
 \code{openxlsx} package) with the three sheets. The first sheet contains the rows
 with highlighted  differences, the second sheet contains the rows of
 \code{df1} that have no match in \code{df2}, while the third sheet contains
-the rows of \code{df2} with no match in \code{df1}.
+the rows of \code{df2} with no match in \code{df1}. The differences may be
+associated to exact matches or  a relative error greater than \code{umbral}
+for numerical columns.
 }
 \examples{
 library("dplyr")
@@ -42,6 +53,8 @@ df2 <- data_frame(x = paste("id", 1:2),
  diffdataframe(df1, df2, key = c("x", "year"), file = "diff-df1-vs-df2.xlsx")
 ## write the resulting dataframe to an object for further use:
 diff_df1_df2 <- diffdataframe(df1, df2, key = c("x", "year"))
-
+df1$z <- rep(100, 3)
+df2$z <- c(95, 106, 100)
+diffdataframe(df1, df2, key = c("x", "year"), numcol = "z", file = "diff-df1-vs-df2.xlsx")
 }
 
