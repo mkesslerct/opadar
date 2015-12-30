@@ -251,14 +251,24 @@ diffdataframe <- function(df1, df2, key, file = NULL, numcol = NULL,
       rep(!duplicated(x)[2], 2)
   }
   haydiferenciarelativa <- function(x, umbral){
-    rep(abs(diff(x)/x[1]) > umbral, 2)
+    if (x[1] == 0) {
+      if (tail(x, 1) != 0) {
+        x1 <- c(1, 1 + tail(x, 1)-x[1])
+      } else {
+        x1 <- c(1, 1)
+      }
+    } else {
+      x1 <- x
+    }
+    rep(abs((head(x1, 1) - tail(x1, 1))/x1[1]) > umbral, 2)
   }
   df1$origen <- "1"
   df2$origen <- "2"
   df12 <- rbind(df1, df2)
-  if (sum(sapply(as.list(df12[numcol]), FUN = function(x) !is.numeric(x))) >0){
+  if (is.character(numcol) && sum(sapply(as.list(df12[numcol]), FUN = function(x) !is.numeric(x))) >0){
     stop("Hay columnas no númericas en la especificación de numcol")
   }
+  browser()
   arrg_cols <- c(key, "origen")
   grp_cols <- key
   # Convert character vector to list of symbols
@@ -281,14 +291,15 @@ diffdataframe <- function(df1, df2, key, file = NULL, numcol = NULL,
   if (!is.null(numcol)){
     numdiff <- cambios[c(key , numcol)] %>%
       dplyr::group_by_(.dots = dotsgrp) %>%
-      mutate_each_(funs(abs(diff(.)/.[1]) > 0.05), vars = numcol) %>%
+      mutate_each_(funs(haydiferenciarelativa(., umbral)[1]),
+                   vars = numcol) %>%
       ungroup() %>% 
       select_(numcol) %>% 
       rowSums
   } else {
     numdiff <- 0
   }
-  num.df <- data.frame(id = get(key, cambios), numdiff) %>% distinct
+  num.df <- data.frame(cambios[key], numdiff) %>% distinct
   ## finalmente cambios contiene el df que presente registros id con ndup > 1 o
   ## bien numdiff > 0. 
   cambios <- cambios %>% left_join(ndup.df) %>%
