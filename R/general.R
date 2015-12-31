@@ -212,7 +212,7 @@ info_join <- function(x, y, ...){
 #'   highlighted. Default NULL. 
 #' @param umbral numeric. A value that serves as a threshold for the relative
 #'   difference in \code{numcol}. It should be a number between 0 and 1. The
-#'   default is 0.05 (5%).
+#'   default is 0.05 (5\%).
 #' @return To access the dataframe that contains the differences, the output of
 #' \code{diffdataframe} should be assigned to a variable.
 #' 
@@ -268,7 +268,6 @@ diffdataframe <- function(df1, df2, key, file = NULL, numcol = NULL,
   if (is.character(numcol) && sum(sapply(as.list(df12[numcol]), FUN = function(x) !is.numeric(x))) >0){
     stop("Hay columnas no númericas en la especificación de numcol")
   }
-  browser()
   arrg_cols <- c(key, "origen")
   grp_cols <- key
   # Convert character vector to list of symbols

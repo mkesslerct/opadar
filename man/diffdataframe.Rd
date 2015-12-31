@@ -18,11 +18,11 @@ appear in a different order (\code{rbind(df1, df2)} should make sense)}
 \item{numcol}{string vector. A vector of columns names which are numeric and
 for which relative error should be checked. If the relative difference
 (w.r.t the value of first dataframe) is greater than umbral, it will be
-highlighted. Default NULL}
+highlighted. Default NULL.}
 
 \item{umbral}{numeric. A value that serves as a threshold for the relative
 difference in \code{numcol}. It should be a number between 0 and 1. The
-default is 0.05 (5%).}
+default is 0.05 (5\%).}
 }
 \value{
 To access the dataframe that contains the differences, the output of
