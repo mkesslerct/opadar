@@ -251,16 +251,21 @@ diffdataframe <- function(df1, df2, key, file = NULL, numcol = NULL,
       rep(!duplicated(x)[2], 2)
   }
   haydiferenciarelativa <- function(x, umbral){
-    if (x[1] == 0) {
-      if (tail(x, 1) != 0) {
-        x1 <- c(1, 1 + tail(x, 1)-x[1])
-      } else {
-        x1 <- c(1, 1)
-      }
-    } else {
-      x1 <- x
-    }
-    rep(abs((head(x1, 1) - tail(x1, 1))/x1[1]) > umbral, 2)
+    if(length(x) == 1) return(FALSE)
+    switch(paste(sum(is.na(x))),
+           "1" = rep(TRUE, 2),
+           "2" = rep(FALSE, 2),
+           "0" = {if (x[1] == 0) {
+             if (tail(x, 1) != 0) {
+               x1 <- c(1, 1 + tail(x, 1)-x[1])
+             } else {
+               x1 <- c(1, 1)
+             }
+           } else {
+             x1 <- x
+           }
+             rep(abs((head(x1, 1) - tail(x1, 1))/x1[1]) > umbral, 2)
+           })
   }
   df1$origen <- "1"
   df2$origen <- "2"
