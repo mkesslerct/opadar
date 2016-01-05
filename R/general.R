@@ -608,6 +608,8 @@ escribirTablaDatos <- function(wb,
     x <- as.data.frame(t(x))
     rowNames <- colNames
     colNames <- FALSE
+  } else {
+    rowNames = FALSE
   }
   
   openxlsx::writeData(wb, sheet = sheetName, x = x,
