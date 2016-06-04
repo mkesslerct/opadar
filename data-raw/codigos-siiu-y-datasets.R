@@ -77,5 +77,5 @@ devtools::use_data(centrosUPCT, overwrite = TRUE)
 
 planes_centros <- read.table(datafile("planes_centros.txt"), skip = 6,
                                      sep = "|", fileEncoding = "latin1",
-                            header = TRUE)
+                             header = TRUE, colClasses = "character")
 devtools::use_data(planes_centros, overwrite = TRUE)
