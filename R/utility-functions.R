@@ -115,27 +115,21 @@ profilingcolumna <- function(x){
     t <- gsub(pattern = " ", replacement = "[SPC]", t)
     t
 }
+
 freqprofiling <- function(x,maxrow){
-  t <- ifelse(x == "", "\"\"", x)
-  tabla <- table(profilingcolumna(t), useNA = "always")
+  tt <- ifelse(x == "", "\"\"", x)
+  tabla <- table(profilingcolumna(tt), useNA = "always")
   ## buscamos ordenarlos por orden decreciente pero poniendo el NA al final.
   orden <- order(tabla, decreasing = TRUE)
   indNA <- which(orden == dim(tabla))
   tabla <- tabla[c(orden[-indNA], orden[indNA])]
   rownames(tabla)[is.na(rownames(tabla))] <- "NA"
-  dd <- as.data.frame(tabla) %>%
-    dplyr::mutate(nombrefila = rownames(.),
-           celda = paste(nombrefila, " (", tabla, ")",
-                         sep = ""))
-  tablavalores <- table(t)[order(table(t), decreasing = TRUE)]
-  vv <- as.data.frame(tablavalores) %>%
-    dplyr::mutate(nombrefila = rownames(.),
-           celda = paste(nombrefila,
-                         " (", tablavalores, ")",
-                         sep = ""))
-  c(dd$celda[1:maxrow],
-    length(unique(t)),
-    vv$celda[1:5])
+  celda_dd <- paste(rownames(tabla), " (", tabla, ")", sep = "")
+  tablavalores <- table(tt)[order(table(tt), decreasing = TRUE)]
+    celda_vv <- paste(names(tablavalores), " (", tablavalores, ")",  sep = "")
+  c(celda_dd[1:maxrow],
+    length(unique(tt)),
+    celda_vv[1:5])
 }
 ##
 extractinside <- function(string, left.border,
